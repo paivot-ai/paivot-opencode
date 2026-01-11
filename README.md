@@ -2,6 +2,8 @@
 
 This directory contains the Paivot methodology ported to OpenCode as a drop-in replacement for Claude Code.
 
+**Important**: See `.opencode/METHODOLOGY.md` for the complete methodology documentation including orchestrator rules, agent spawning, and the critical Backlog Review Gate.
+
 ## Setup
 
 ### 1. Set your Anthropic API Key
