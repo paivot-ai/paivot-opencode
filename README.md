@@ -120,3 +120,11 @@ Run the verification script to check frontmatter:
 ```bash
 ./verify-agents.sh
 ```
+
+## Acknowledgments
+
+Paivot incorporates ideas from:
+
+- **[Code Field](https://github.com/NeoVertex1/context-field/blob/main/code_field.md)** - A prompt engineering framework that creates cognitive conditions for better code by suppressing common LLM failure modes. The Developer agent's "Code Quality Mindset" section embeds Code Field principles: stating assumptions before writing code, asking "what would break this?", handling edge cases explicitly, and never claiming correctness without verification.
+
+- **[Ralph Loop](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/ralph-loop)** - An iterative execution pattern for self-referential feedback cycles within a single session. The Claude Code version of Paivot implements this as `/piv-loop` for unattended execution.
