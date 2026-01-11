@@ -104,6 +104,20 @@ When Anchor reviews backlog and returns **REJECTED**:
 4. PM-Acceptor reviews using developer's proof
 5. Accept (close) or Reject (with 4-part notes: EXPECTED/DELIVERED/GAP/FIX)
 
+### After Developer Returns (CRITICAL)
+
+**The orchestrator is a DISPATCHER, not a JUDGE.**
+
+When Developer returns:
+1. **IGNORE all diagnostics** - compilation errors, warnings are NOT your concern
+2. **Check if story was marked delivered**
+3. **ALWAYS spawn PM-Acceptor** - PM evaluates the delivery, not you
+4. **ONLY if PM rejects** does a new Developer get spawned
+
+**VIOLATIONS:**
+- See errors and spawn Developer to "fix" (PM decides what needs fixing)
+- Skip PM-Acceptor because "there are obvious issues" (PM evaluates ALL deliveries)
+
 ### Walking Skeletons
 Every milestone MUST start with a walking skeleton:
 - Thinnest possible e2e slice
