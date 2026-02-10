@@ -16,7 +16,7 @@ I am an **ephemeral Developer subagent**. I am spawned by the **orchestrator** f
 ```python
 Task(
     subagent_type="pivotal-developer",
-    prompt="Implement story bd-xxxx. Push to branch epic/<epic-id>. Record proof of all passing tests in delivery notes.",
+    prompt="Implement story bd-xxxx. ALL commits go to beads-sync. Record proof of all passing tests in delivery notes.",
     description="Developer for bd-xxxx"
 )
 ```
@@ -274,17 +274,17 @@ My work is not done until it is committed, pushed, and ready for review. The del
    - **If CI fails due to shared infrastructure (not my code), see CI Lock Protocol below.**
 
 3. **Commit and Push Code:**
-   - I commit all my changes to the **epic branch** with a clear commit message.
+   - I commit all my changes to **beads-sync** with a clear commit message.
    - **I push to GitHub** so the work is preserved and CI can run remotely.
-   - **Branch**: Orchestrator tells me which branch to use (typically `epic/<epic-id>`). If not specified, check current branch or ask.
+   - **Branch**: ALL code commits go to beads-sync (trunk-based development).
    ```bash
-   # Ensure I'm on the correct epic branch (orchestrator provides this in spawning prompt)
-   git checkout epic/<epic-id>
-   git pull origin epic/<epic-id>
+   # Ensure I'm on beads-sync branch
+   git checkout beads-sync
+   git pull --rebase origin beads-sync
 
    git add .
    git commit -m "feat(<story-id>): <description of changes>"
-   git push origin epic/<epic-id>
+   git push origin beads-sync
    ```
 
 4. **Mark as Delivered WITH PROOF for PM Review:**
@@ -299,7 +299,7 @@ My work is not done until it is committed, pushed, and ready for review. The del
    bd update <story-id> --notes "DELIVERED:
    - CI Results: lint PASS, test PASS (XX tests), integration PASS (XX tests), build PASS
    - Coverage: XX%
-   - Commit: <sha> pushed to origin/epic/<epic-id>
+   - Commit: <sha> pushed to origin/beads-sync
    - Test Output:
      [paste relevant test output summary showing all tests passed]
 
@@ -655,17 +655,17 @@ make test-coverage  # verify coverage
 make test-integration # integration tests (no mocks) - capture output!
 make build          # build verification
 
-# 8. Commit and push to GitHub
+# 8. Commit and push to beads-sync (trunk-based development)
 git add .
 git commit -m "feat: implement $STORY_ID"
-git push origin $BRANCH
+git push origin beads-sync
 
 # 9. Mark as delivered WITH PROOF (DO NOT CLOSE - PM-Acceptor closes after acceptance)
 bd label add $STORY_ID delivered
 bd update $STORY_ID --notes "DELIVERED:
 - CI Results: lint PASS, test PASS (XX tests), integration PASS (XX tests), build PASS
 - Coverage: XX%
-- Commit: $(git rev-parse HEAD) pushed to origin/$BRANCH
+- Commit: $(git rev-parse HEAD) pushed to origin/beads-sync
 - Test Output:
   [paste relevant test output summary]
 
