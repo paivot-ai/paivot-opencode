@@ -1,14 +1,95 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "anthropic": {
-      "options": {
-        "apiKey": "{env:ANTHROPIC_API_KEY}"
+  "models": {
+    "default": "anthropic/claude-sonnet-4-5-20250929",
+    "opus": "anthropic/claude-opus-4-6-20250514",
+    "sonnet": "anthropic/claude-sonnet-4-5-20250929",
+    "haiku": "anthropic/claude-haiku-4-5-20251001",
+    "openai-gpt4": "openai/gpt-4-turbo-2024-04-09",
+    "openai-o1": "openai/o1-preview-2024-09-12",
+    "google-gemini": "google/gemini-2.0-flash-exp",
+    "groq-fast": "groq/llama-3.3-70b-versatile",
+    "local-ollama": "ollama/qwen2.5-coder:32b"
+  },
+  "default_agent": "build",
+  "agent": {
+    "pivotal-sr-pm": {
+      "description": "Creates comprehensive backlog from D&F documents with embedded context",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": false,
+        "bash": true
+      }
+    },
+    "pivotal-pm": {
+      "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes",
+      "model": "{models.sonnet}",
+      "mode": "subagent",
+      "tools": {
+        "write": false,
+        "bash": true
+      }
+    },
+    "pivotal-developer": {
+      "description": "Implements story with tests; records proof of passing tests; marks delivered (NOT closed)",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": true,
+        "bash": true
+      }
+    },
+    "pivotal-architect": {
+      "description": "Designs system architecture; owns ARCHITECTURE.md",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": true,
+        "bash": true
+      }
+    },
+    "pivotal-designer": {
+      "description": "Captures user needs and DX for all product types; owns DESIGN.md",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": true,
+        "bash": true
+      }
+    },
+    "pivotal-business-analyst": {
+      "description": "Captures business outcomes through iterative questioning; owns BUSINESS.md",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": true,
+        "bash": true
+      }
+    },
+    "pivotal-anchor": {
+      "description": "Adversarial reviewer - reviews backlogs for gaps; validates milestones",
+      "model": "{models.opus}",
+      "mode": "subagent",
+      "tools": {
+        "write": false,
+        "bash": true
+      }
+    },
+    "pivotal-retro": {
+      "description": "Harvests learnings from completed epics; writes actionable insights to .learnings/",
+      "model": "{models.sonnet}",
+      "mode": "subagent",
+      "tools": {
+        "write": true,
+        "bash": true
       }
     }
   },
-  "model": {
-    "primary": "anthropic/claude-sonnet-4-20250514",
-    "subagent": "anthropic/claude-sonnet-4-20250514"
+  "instructions": ["AGENTS.md", "docs/GIT_WORKFLOW.md"],
+  "permissions": {
+    "skills": "allow",
+    "bash": "allow",
+    "write": "ask"
   }
 }
