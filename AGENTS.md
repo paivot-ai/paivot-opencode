@@ -1,277 +1,330 @@
-# Paivot - Modified Pivotal Methodology for AI Agents
+# Paivot Methodology for OpenCode
 
-This is the working agreement for AI agents using beads (bd) to run the Paivot Methodology. Optimized for ephemeral, short-context agent execution with testing requirements driven by story content.
+This file defines the Paivot multi-agent software delivery methodology adapted for OpenCode.
+It is loaded via `instructions` in `opencode.json` and applies whenever the user invokes
+Paivot (phrases like "use Paivot", "Paivot this", "run Paivot", "engage Paivot").
 
-## Core Principles
+## Tools: nd, pvg, vlt
 
-- **Outcomes first** - technical details support outcomes
-- **Discovery & Framing before building** - explicit, structured discovery
-- **Quality enables speed** - rigorous engineering and short feedback loops
-- **Strict role boundaries** - agents do NOT step outside their roles
-- **Testing is mandatory** - reasonable unit coverage + mandatory integration tests (no mocks, real API calls)
-- **Trunk-based development** - ALL code commits go to `beads-sync` (NO feature branches per story)
+Paivot uses three CLI tools. All must be on PATH.
 
-## Quick Reference
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `nd` | Git-native issue tracker (stories, epics, bugs, dependencies) | `https://github.com/RamXX/nd` |
+| `pvg` | Loop lifecycle, crash recovery, vault seeding | `https://github.com/paivot-ai/pvg` |
+| `vlt` | Obsidian vault CLI (knowledge layer) | `https://github.com/RamXX/vlt` |
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work (PM only)
-bd sync               # Sync with git
+## nd FSM (Finite State Machine)
+
+nd has a built-in FSM engine (`status.fsm = true`) that enforces workflow transitions.
+This replaces external FSM tools. Configure via `nd config` (done by `/piv-init`):
+
+```yaml
+status_custom: "delivered,rejected"
+status_sequence: "open,in_progress,delivered,closed"
+status_exit_rules: "blocked:open,in_progress;rejected:in_progress"
+status_fsm: true
 ```
 
-> **Note**: In Paivot, only PMs close stories. Developers mark stories as `delivered` instead.
+### How it works
 
-## Overview
+- **Linear flow**: `open -> in_progress -> delivered -> closed` (no skipping)
+- **Backward rework**: any step can regress to earlier steps
+- **Blocked**: can only unblock to `open` or `in_progress`
+- **Rejected** (off-sequence): can only go to `in_progress` (re-work)
+- **Invalid transitions are rejected by nd** -- no additional enforcement needed
 
-- **Beads is crucial** - All state, context, decisions, and rejection history are tracked in beads
-- The backlog is the single source of truth owned by the PM
-- **Stories are self-contained execution units** - Sr. PM/PM embeds all context into stories
-- **Default testing standard**: Reasonable unit coverage + **mandatory integration tests** (no mocks, real API calls)
-- **No skipped tests** - if a test has a blocker, the story is blocked and user alerted
-- Stories must be INVEST (Independent, Negotiable, Valuable, Estimable, Small, Testable)
+### Status Semantics
 
-## Git Workflow: Trunk-Based Development (MANDATORY)
+| Status | Who sets it | Meaning |
+|--------|------------|---------|
+| `open` | Sr PM (create) | Ready for work |
+| `in_progress` | Developer (claim) | Being worked on |
+| `delivered` | Developer (done) | Ready for PM review |
+| `closed` | PM-Acceptor (accept) | Accepted and complete |
+| `blocked` | Anyone | Cannot proceed |
+| `rejected` | PM-Acceptor (reject) | Needs rework |
 
-**Paivot uses trunk-based development via beads-sync. NO feature branches per story.**
+### Dispatcher Queries (nd-native)
 
-**Why:** Beads' hash-based IDs (`bd-a1b2`) eliminate merge collisions when multiple agents work concurrently on the same branch. The intelligent 3-way merge driver resolves field-level conflicts automatically. Feature branching defeats this design.
+```bash
+nd list --status delivered --json            # Find work for PM-Acceptor
+nd list --status rejected --json             # Find rejected work for Developer
+nd ready --sort priority --json              # Find new work for Developer
+nd list --status in_progress --json          # Check what's being worked on
+```
 
-**Branch Structure:**
-- `main` - Protected branch (requires PR for merges)
-- `beads-sync` - Auto-managed sync branch where ALL agents commit concurrently
-- Branches only for experiments (> 1 week, may discard) - requires `BEADS_NO_DAEMON=1`
+## Dispatcher Mode
 
-**Developer Instructions:**
-- ALL code commits go to `beads-sync` (NOT epic branches, NOT feature branches)
-- Daemon auto-syncs beads state every 30 seconds
-- Hash-based IDs prevent collisions when multiple agents work simultaneously
-- `bd sync` forces immediate sync before critical operations
+When Paivot is invoked, you operate as **dispatcher-only**. You coordinate agents.
 
-See `docs/GIT_WORKFLOW.md` for comprehensive trunk-based development guide.
+### You NEVER:
+- Write source code or tests yourself
+- Write BUSINESS.md, DESIGN.md, or ARCHITECTURE.md yourself
+- Create story files or bugs yourself
+- Make architectural or design decisions yourself
+- Skip agents to "save time"
+- Resolve merge conflicts yourself (spawn a developer -- conflict resolution requires code judgment)
+- Edit source files for any reason, including "cleanup" or "git maintenance"
 
-## Agent Execution Model
+### You DO:
+- Spawn BLT agents (BA, Designer, Architect) and relay their questions
+- Spawn execution agents (Sr PM, Developer, PM-Acceptor, Anchor, Retro)
+- Relay `QUESTIONS_FOR_USER` blocks from subagents to the user
+- Summarize agent outputs for the user
+- Manage the nd backlog (status transitions, priority queries)
+- Capture knowledge to the vault
 
-**CRITICAL CONSTRAINT: Agents CANNOT spawn subagents.** Only the orchestrator (main agent) can spawn agents.
+### Agent Spawn Syntax
 
-**The orchestrator (main agent) is the DISPATCHER. It:**
-- NEVER writes code itself - only orchestrates via subagents
-- Spawns Developer agents for story implementation
-- Spawns PM-Acceptor agents for delivery review
-- Spawns Sr. PM agent for story/epic CRUD
-- Manages parallelization and agent budget directly
+Use `@paivot-<role>` to reference agents:
 
-**FSM HARD ENFORCEMENT (when piv is initialized):**
+```
+@paivot-sr-pm              # Senior Product Manager
+@paivot-pm                 # PM-Acceptor
+@paivot-developer          # Developer
+@paivot-architect          # Architect
+@paivot-designer           # Designer
+@paivot-business-analyst   # Business Analyst
+@paivot-anchor             # Anchor (adversarial reviewer)
+@paivot-retro              # Retrospective
+```
 
-The PreToolUse hook enforces the FSM at the tool level:
-- Calls `piv next` before every agent spawn
-- **Blocks any action that doesn't match** FSM recommendation
-- **Blocks wrong story** - must work on FSM-prioritized story
-- **Blocks excess spawns** - respects parallelization limits
+## Scope Guard (Soft Enforcement)
 
-The orchestrator CANNOT bypass the FSM - the hook will reject mismatched actions.
+OpenCode does not have Claude Code's hook system. Instead, these rules are enforced
+through instructions. The dispatcher MUST follow them:
 
-### Agent Spawning Rules
+### Protected Vault Paths
 
-| Role | How to Invoke | Lifespan | Scope |
-|------|---------------|----------|-------|
-| Sr. PM | `@pivotal-sr-pm "Create/update stories for..."` | Ephemeral | Story/Epic CRUD |
-| PM | `@pivotal-pm "File bug for..."` | Ephemeral | Bug filing |
-| PM-Acceptor | `@pivotal-pm "Review delivered story <id>..."` | Ephemeral | One story |
-| Developer | `@pivotal-developer "Implement story <id>..."` | Ephemeral | One story |
-| Retro (Epic) | `@pivotal-retro "Run retrospective for epic <id>..."` | Ephemeral | One milestone epic |
-| Anchor (Milestone) | `@pivotal-anchor "MILESTONE REVIEW for completed epic <id>..."` | Ephemeral | One milestone epic |
-| Anchor (Backlog) | `@pivotal-anchor "Review backlog for gaps..."` | Ephemeral | Full backlog |
+The global Obsidian vault (resolved via `vlt vault="Claude" dir`) has protected folders:
+- `methodology/` -- agent prompts (read-only, changes via proposals)
+- `conventions/` -- operating conventions (read-only, changes via proposals)
+- `decisions/` -- architectural decisions (read-only, changes via proposals)
+- `patterns/` -- reusable patterns (read-only, changes via proposals)
 
-**The orchestrator (main agent) MUST:**
-- Spawn these as subagents using the `@agent-name` syntax
-- NEVER "become" or "act as" these roles itself
-- NEVER write code itself - always spawn a Developer agent
-- Spawn Sr. PM for story/epic CRUD (create/update/delete epics or stories)
-- Spawn PM for bug filing (cheaper than Sr. PM)
+Allowed: `_inbox/` (proposals land here), `.vault/knowledge/` (project-local, direct edits OK).
+
+### D&F Document Guard
+
+BUSINESS.md, DESIGN.md, and ARCHITECTURE.md must ONLY be written by their respective
+BLT agents (BA, Designer, Architect). The dispatcher never writes these directly.
+
+## Concurrency Limits (HARD RULE)
+
+Limits are stack-dependent. Detect from project files (Cargo.toml, *.xcodeproj,
+*.csproj, wrangler.toml/wrangler.jsonc, pyproject.toml, package.json, etc.).
+
+**Heavy stacks** (Rust, iOS/Swift, C#, CloudFlare Workers):
+- Maximum 2 developer agents simultaneously
+- Maximum 1 PM-Acceptor agent simultaneously
+- Total active subagents (all types) must not exceed 3
+
+**Light stacks** (Python, non-CF TypeScript/JavaScript):
+- Maximum 4 developer agents simultaneously
+- Maximum 2 PM-Acceptor agents simultaneously
+- Total active subagents (all types) must not exceed 6
+
+When a project mixes stacks, use the most restrictive limit.
+
+## Three-Tier Knowledge Model
+
+Knowledge lives in three tiers with different governance:
+
+### Tier 1: System Vault (global Obsidian "Claude")
+
+Shared across ALL projects. Changes require user approval via proposal workflow.
+
+| Folder | Contains |
+|--------|----------|
+| methodology/ | Agent prompts |
+| conventions/ | Operating mode, checklists |
+| decisions/ | Cross-project decisions |
+| patterns/ | Cross-project patterns |
+| debug/ | Cross-project debug insights |
+| projects/ | Project index notes |
+| _inbox/ | Unsorted capture |
+
+### Tier 2: Project Vault (`.vault/knowledge/`)
+
+Scoped to a single project. Changes apply directly, no approval needed.
+
+### Tier 3: Session Context
+
+Ephemeral, per-session. Lost on context compaction.
+
+## D&F Orchestration
+
+### Full D&F
+
+BLT agents produce three documents sequentially with questioning rounds.
+
+1. Spawn `@paivot-business-analyst` with existing context
+2. **FIRST-TURN GATE** (applies to ALL BLT agents):
+   Check FIRST output for `QUESTIONS_FOR_USER` block.
+   - If present: relay to user, resume agent with answers. Repeat until document produced.
+   - If ABSENT on first turn: PROTOCOL VIOLATION. Re-spawn with correction:
+     "You produced <DOCUMENT>.md without asking questions first. Your FIRST output
+     MUST be a QUESTIONS_FOR_USER block. Start with questions."
+     (Max 2 re-spawn attempts. If still failing, escalate to user.)
+3. Spawn `@paivot-designer` with BUSINESS.md content
+4. Same first-turn gate + relay loop until DESIGN.md produced
+5. Spawn `@paivot-architect` with BUSINESS.md + DESIGN.md
+6. Same first-turn gate + relay loop until ARCHITECTURE.md produced
+
+### BLT Convergence (MANDATORY after all three documents exist)
+
+7. Re-spawn each BLT agent in cross-review mode (can run in parallel, max 3):
+   - BA: cross-review DESIGN.md and ARCHITECTURE.md against BUSINESS.md
+   - Designer: cross-review BUSINESS.md and ARCHITECTURE.md against DESIGN.md
+   - Architect: cross-review BUSINESS.md and DESIGN.md against ARCHITECTURE.md
+8. Check outputs for `BLT_ALIGNED` vs `BLT_INCONSISTENCIES`
+   - All aligned: proceed to Post-D&F
+   - Any inconsistencies: collect, present to user, fix, re-run (max 3 rounds)
+
+### Light D&F
+
+Same BLT sequence with the same FIRST-TURN GATE. Agents draft with fewer questioning
+rounds (1-2 instead of 3-5). BLT Convergence still applies.
+
+### Post-D&F
+
+1. Spawn `@paivot-sr-pm` to create backlog from D&F documents
+2. Spawn `@paivot-anchor` for adversarial backlog review
+3. If REJECTED: Sr PM fixes, Anchor re-reviews (max 3 rounds)
+4. If APPROVED: proceed to execution
+
+## Execution Loop
+
+### Priority Order
+
+Each iteration, pick work in this order:
+
+0. **Sr PM for bug triage** (highest -- scan agent output for `DISCOVERED_BUG:` blocks)
+1. **PM-Acceptor for delivered stories** (unblock the pipeline)
+   ```bash
+   nd list --status delivered --json
+   ```
+2. **Developer for rejected stories** (fix before starting new work)
+   ```bash
+   nd list --status rejected --json
+   ```
+3. **Developer for ready stories** (new work)
+   ```bash
+   nd ready --sort priority --json
+   ```
+
+### Developer Spawning: Normal vs Hard-TDD
+
+Hard-TDD is **opt-in per story** via the `hard-tdd` label. Check before spawning:
+
+```bash
+nd show <id> --json | grep -q '"hard-tdd"'
+```
+
+**If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
+The developer writes both implementation and tests in a single pass.
+
+**If `hard-tdd` label is PRESENT**: two-phase flow:
+1. **RED phase**: spawn developer with "RED PHASE" prompt (tests only)
+   - Developer marks delivered: `nd update <id> --status=delivered`
+   - Add label: `nd labels add <id> tdd-red`
+2. PM-Acceptor reviews tests
+3. **GREEN phase**: spawn developer with "GREEN PHASE" prompt (implementation only)
+   - Remove tdd-red, add tdd-green: `nd labels remove <id> tdd-red && nd labels add <id> tdd-green`
+4. PM-Acceptor reviews implementation
+
+### Bug Triage Protocol
+
+When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
+1. Collect all bug reports from the agent output
+2. Spawn `@paivot-sr-pm` in Bug Triage Mode
+3. Sr PM creates fully structured bugs with AC, epic placement, and chain
+4. All bugs are P0. No exceptions.
+
+### Epic Auto-Close
+
+After PM-Acceptor accepts a story, it checks if all siblings in the parent epic are
+closed. If so, it closes the epic. Epic completion is NOT a loop termination event.
+
+### Termination Conditions
+
+The loop runs across the ENTIRE backlog, not a single epic. It stops when:
+- Entire backlog complete (nothing open anywhere)
+- All remaining work blocked (no actionable items)
+- Max iterations reached (if set)
+- User cancels with `/piv-cancel-loop`
+
+### nd Command Reference
+
+**Story lifecycle (Developer):**
+```bash
+nd update <id> --status=in_progress          # Claim story
+nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb
+nd update <id> --status=delivered             # Mark delivered for PM review
+```
+
+**Story review (PM-Acceptor):**
+```bash
+nd close <id> --reason="Accepted: <summary>" --start=<next-id>  # Accept
+nd update <id> --status=rejected              # Reject
+nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."  # Rejection notes
+```
+
+**Backlog management (Sr PM):**
+```bash
+nd create "Title" --type=epic --priority=1    # Create epic
+nd create "Title" --type=task --priority=<P> --parent=<epic-id> -d "description"  # Create story
+nd create "Title" --type=bug --priority=0 --parent=<epic-id> -d "description"  # Create bug
+nd dep add <story-id> <blocker-id>            # Add dependency
+nd dep relate <story-id> <related-id>         # Soft-link
+nd children <epic-id> --json                  # List stories in epic
+nd dep cycles                                 # Detect dependency cycles
+nd epic close-eligible                        # Check epic readiness
+```
+
+**Diagnostics:**
+```bash
+nd graph / nd graph <epic-id>                 # Dependency DAG
+nd dep tree <id>                              # Dependency tree
+nd path / nd path <id>                        # Execution path
+nd doctor                                     # Health check
+nd stale --days=14                            # Neglected issues
+nd stats                                      # Backlog statistics
+```
+
+## Git Workflow: Branch-per-Epic
+
+After Sr PM creates an epic, create the working branch:
+
+```bash
+git checkout -b epic/<EPIC-ID>-<Brief-Desc> main
+```
+
+All stories in the epic are developed on this branch. After all stories are accepted
+and the epic is closed, merge to main and delete the branch.
+
+## Agent Operating Rules (apply to ALL agents)
+
+1. **Use `vlt` for vault operations** -- never edit vault files directly with Write/Edit
+2. **Never edit vault files directly** -- vlt maintains SHA-256 integrity hashes
+3. **Stop and alert on system errors** -- do NOT silently retry or work around
+4. **Browse vault first, then read** -- `vlt search` is exact match, not semantic
+5. **Skills before web research** -- check available skills before searching the web
 
 ## Testing Philosophy
 
-| Test Type | Purpose | Mocks OK? | Required For |
-|-----------|---------|-----------|--------------|
-| **Unit** | Code quality | YES | 80% coverage |
-| **Integration** | Real functionality | **NO** | Story completion |
-| **E2E** | Full system works | **NO** | Milestones |
+| Level | Gate for | Mocks allowed? | Required by default? |
+|-------|---------|----------------|----------------------|
+| Unit tests | PR merge | Yes | Yes |
+| Integration tests | Story acceptance | No | Yes (hard gate) |
+| E2E tests | Milestone close | No | Yes (hard gate) |
 
-**Key principles:**
-- **Mocks ONLY in unit tests** - unit tests prove code quality, not functionality
-- **Integration tests are what matter** - real API calls, real DBs, no mocks
-- **E2E tests gate milestones** - must be demoable with real requests hitting real code
-- **Test scope: NARROW by default** - Run only tests affected by the story
+Integration tests with mocks are not integration tests. A story without integration
+tests (where technically feasible) MUST NOT be accepted.
 
-**NEVER soften or simplify tests** to work around external issues. If an external dependency has problems, BLOCK the story.
-
-## Discovery & Framing
-
-D&F is an **outcomes-driven** process. All D&F documents live in `docs/`:
-- `docs/BUSINESS.md` - Business outcomes, goals, constraints
-- `docs/DESIGN.md` - User needs, UX/DX, wireframes
-- `docs/ARCHITECTURE.md` - Technical approach, system design
-
-**The Process**:
-1. **Facilitator** engages user, extracts outcomes, goals, constraints
-2. **BA** (via subagent) captures business outcomes → BUSINESS.md
-3. **Designer** (via subagent) captures user needs, DX → DESIGN.md
-4. **Architect** (via subagent) captures technical approach → ARCHITECTURE.md
-5. **Adversarial Backlog Creation**:
-   - **Sr PM** creates backlog with walking skeletons, vertical slices, embedded context
-   - **Anchor** reviews looking for gaps
-   - If REJECTED: **Sr PM fixes gaps**, then **Anchor re-reviews** (orchestrator manages loop)
-   - **Loop continues** until Anchor returns APPROVED
-6. **Green light for execution** - ONLY after Anchor explicitly returns APPROVED
-
-## Execution Loop Priority Order
-
-1. **PM-Acceptor for delivered stories** - Review delivered work first
-2. **Developer for rejected stories** - Fix rejected work before new work
-3. **Developer for ready stories** - Implement new stories
-
-## Delivery Workflow (CRITICAL)
-
-```
-Developer: bd label add <id> delivered
-Developer: bd update <id> --notes "DELIVERED: [PROOF SECTION]"
-(Story stays in_progress with delivered label - developer does NOT close)
-
-PM-Acceptor reviews (evidence-based):
-  - Uses developer's proof instead of re-running tests
-  - Accept: bd label remove <id> delivered && bd label add <id> accepted && bd close <id>
-  - Reject: bd label remove <id> delivered && bd label add <id> rejected && bd update <id> --status open --notes "REJECTED [YYYY-MM-DD]: ..."
-```
-
-**Developer's PROOF section MUST include:**
-```
-DELIVERED:
-- CI Results: lint PASS, test PASS (XX tests), integration PASS (XX tests), build PASS
-- Coverage: XX%
-- Commit: <sha> pushed to origin/beads-sync
-- Test Output: [paste relevant test output or summary]
-
-LEARNINGS: [optional - gotchas, patterns discovered]
-```
-
-## Strict Role Boundaries
-
-**Each agent ONLY does its job. Agents do NOT step outside their roles.**
-
-| Agent | Does | Does NOT |
-|-------|------|----------|
-| Orchestrator | Spawn agents, manage execution loop, dispatch stories | Write code, manage backlog directly |
-| Sr. PM | Create/update/delete stories and epics, embed context | Write code, implement stories |
-| PM-Acceptor | Review deliveries, accept/reject stories, close accepted, file bugs | Write code, create stories/epics |
-| Developer | Implement assigned story, write tests, record proof, deliver | Close stories, modify backlog, modify other repos (read/file bugs only) |
-
-## Learnings Lifecycle
-
-1. **Developers** record `LEARNINGS:` in delivery notes
-2. **PM-Acceptor** captures test gap learnings when bugs slip through
-3. **Retro agent** harvests learnings after milestone epics complete, writes insights to `.learnings/`
-4. **FSM HARD GATE**: After retro, enters `LEARNINGS_REVIEW` - execution blocked until Sr. PM reads `.learnings/` and updates open stories
-5. **Future work benefits** from accumulated knowledge embedded in story context
-
-## Milestone Validation Protocol (MANDATORY)
-
-After EVERY milestone epic retro, the Anchor MUST validate the completed work:
-
-**Purpose:** Validate reality, not just process compliance:
-- Did the epic deliver its business value?
-- Do the tests prove real functionality (not mocked)?
-- Were skills actually consulted (not assumed)?
-- Were corners cut?
-
-**Anchor validates:**
-- [ ] Business value delivery (users can do what was promised)
-- [ ] Test integrity (NO mocks in integration/E2E tests)
-- [ ] Skills consultation (domain-specific work consulted relevant skills)
-- [ ] No corners cut (every AC fully met, no TODOs, no disabled tests)
-- [ ] Program alignment (work serves business outcomes)
-
-## LLM Model Selection
-
-Paivot is vendor-agnostic and works with any LLM provider. Configure in `opencode.json`:
-
-```json
-{
-  "models": {
-    "default": "anthropic/claude-sonnet-4-5-20250929",
-    "opus": "anthropic/claude-opus-4-6-20250514",
-    "openai": "openai/gpt-4-turbo",
-    "google": "google/gemini-2.0-flash-exp",
-    "local": "ollama/qwen2.5-coder:32b"
-  },
-  "agent": {
-    "pivotal-developer": {
-      "model": "{models.opus}"
-    }
-  }
-}
-```
-
-**Supported vendors:**
-- Anthropic (Claude Opus, Sonnet, Haiku)
-- OpenAI (GPT-4, GPT-4 Turbo, O1)
-- Google (Gemini)
-- AWS Bedrock
-- Groq
-- Azure OpenAI
-- Local models (Ollama, LM Studio)
-
-Choose based on your needs:
-- **Claude Opus**: Best for complex reasoning (Sr. PM, Architect, Anchor)
-- **Claude Sonnet**: Cost-effective for PM review, retro
-- **GPT-4 Turbo**: Alternative for complex tasks
-- **Gemini**: Google ecosystem integration
-- **Local models**: Privacy, cost control
-
-## Best Practices
-
-- **Outcomes first** - technical details support outcomes
-- **Challenge the user** - question assumptions, push back on unclear requirements
-- **Sr PM embeds ALL context + testing requirements** - developers need nothing beyond the story
-- **Orchestrator NEVER writes code** - spawns Developer agents
-- **Developers MUST record proof** - PM uses evidence, not re-testing
-- **Rejected stories prioritized first** - clear the queue before new work
-- **Spikes for ambiguity** - don't guess, investigate
-- **Other repos: read and file bugs only** - never modify external repos
-- **Anchor validates reality at milestones** - not just process compliance but actual delivery
-
-## Configuration
-
-Check `.claude/paivot.local.md` (if migrating from Claude Code) or create `opencode-paivot.local.md` for parallelization limits:
-
-```yaml
----
-max_parallel_devs: 2   # Max Developer agents at once (default: 2)
-max_parallel_pms: 1    # Max PM agents at once (default: 1)
----
-```
-
-The FSM also supports configuration via:
-
-```bash
-piv config set max_parallel_devs 3
-piv config set max_parallel_pms 2
-piv config set decomposition per-milestone
-piv config get
-```
-
-## Labels
-
-| Label | Meaning |
-|-------|---------|
-| `delivered` | Developer done, awaiting PM review |
-| `accepted` | PM approved, story closed |
-| `rejected` | PM failed AC, story reopened |
-| `cant_fix` | 5+ rejections, needs human intervention |
-| `milestone` | Epic with new demoable functionality |
-| `tdd-strict` | Requires 100% unit test coverage |
-| `run-all-tests` | Run full test suite, not narrow scope |
-| `contains-learnings` | Story has LEARNINGS in notes |
-| `ci-fix` | CI infrastructure fix in progress (lock) |
-| `gap-fix` | Fixes gaps found by Anchor milestone review |
+**Skipped tests are not passing tests.** Tests gated behind environment variables
+(e.g., `@pytest.mark.skipif(not os.environ.get('ENABLE_..._TESTS'))`) are dormant
+code, not integration tests. "0 failures with 0 executions" proves nothing.
+If infrastructure exists, tests must run unconditionally. If infrastructure doesn't
+exist, the story is BLOCKED -- not "delivered with gated tests."

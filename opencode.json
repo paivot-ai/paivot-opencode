@@ -1,94 +1,113 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "models": {
-    "default": "anthropic/claude-sonnet-4-5-20250929",
+    "default": "anthropic/claude-sonnet-4-6-20250514",
     "opus": "anthropic/claude-opus-4-6-20250514",
-    "sonnet": "anthropic/claude-sonnet-4-5-20250929",
-    "haiku": "anthropic/claude-haiku-4-5-20251001",
-    "openai-gpt4": "openai/gpt-4-turbo-2024-04-09",
-    "openai-o1": "openai/o1-preview-2024-09-12",
-    "google-gemini": "google/gemini-2.0-flash-exp",
-    "groq-fast": "groq/llama-3.3-70b-versatile",
-    "local-ollama": "ollama/qwen2.5-coder:32b"
+    "sonnet": "anthropic/claude-sonnet-4-6-20250514",
+    "haiku": "anthropic/claude-haiku-4-5-20251001"
   },
-  "default_agent": "build",
   "agent": {
-    "pivotal-sr-pm": {
-      "description": "Creates comprehensive backlog from D&F documents with embedded context",
-      "model": "{models.opus}",
+    "paivot-sr-pm": {
+      "description": "Creates comprehensive backlog from D&F documents with embedded context. Also the ONLY agent authorized to create bugs -- receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": false,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-sr-pm.md"
     },
-    "pivotal-pm": {
-      "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes",
-      "model": "{models.sonnet}",
+    "paivot-pm": {
+      "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes. Ephemeral -- spawned for one delivered story, then disposed.",
+      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": false,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-pm.md"
     },
-    "pivotal-developer": {
-      "description": "Implements story with tests; records proof of passing tests; marks delivered (NOT closed)",
-      "model": "{models.opus}",
+    "paivot-developer": {
+      "description": "Implements story with tests; records proof of passing tests; marks delivered via nd status transition. Ephemeral -- spawned for one story, then disposed.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": true,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-developer.md"
     },
-    "pivotal-architect": {
-      "description": "Designs system architecture; owns ARCHITECTURE.md",
-      "model": "{models.opus}",
+    "paivot-architect": {
+      "description": "Designs system architecture; owns ARCHITECTURE.md. Part of the Balanced Leadership Team. Asks clarifying questions about technical constraints via QUESTIONS_FOR_USER blocks.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": true,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-architect.md"
     },
-    "pivotal-designer": {
-      "description": "Captures user needs and DX for all product types; owns DESIGN.md",
-      "model": "{models.opus}",
+    "paivot-designer": {
+      "description": "Captures user needs and DX for ALL product types (UI, API, CLI, database); owns DESIGN.md. Part of the Balanced Leadership Team.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": true,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-designer.md"
     },
-    "pivotal-business-analyst": {
-      "description": "Captures business outcomes through iterative questioning; owns BUSINESS.md",
-      "model": "{models.opus}",
+    "paivot-business-analyst": {
+      "description": "Captures business outcomes through iterative questioning rounds; owns BUSINESS.md. Part of the Balanced Leadership Team.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": true,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-business-analyst.md"
     },
-    "pivotal-anchor": {
-      "description": "Adversarial reviewer - reviews backlogs for gaps; validates milestones",
-      "model": "{models.opus}",
+    "paivot-anchor": {
+      "description": "Adversarial reviewer in two modes: (1) BACKLOG REVIEW -- find gaps, missing walking skeletons, horizontal layers. (2) MILESTONE REVIEW -- validate real delivery, inspect tests for mocks.",
+      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": false,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-anchor.md"
     },
-    "pivotal-retro": {
-      "description": "Harvests learnings from completed epics; writes actionable insights to .learnings/",
-      "model": "{models.sonnet}",
+    "paivot-retro": {
+      "description": "Harvests learnings from completed epics; writes actionable insights to .vault/knowledge/ with actionable: pending tag.",
+      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
-      "tools": {
-        "write": true,
-        "bash": true
-      }
+      "prompt": ".opencode/agent/paivot-retro.md"
     }
   },
-  "instructions": ["AGENTS.md", "docs/GIT_WORKFLOW.md"],
+  "command": {
+    "piv-init": {
+      "description": "Initialize project with git, nd, nd FSM, and D&F document structure",
+      "template": ".opencode/commands/piv-init.md"
+    },
+    "piv-start": {
+      "description": "Single execution pass -- find ready work and dispatch agents",
+      "template": ".opencode/commands/piv-start.md"
+    },
+    "piv-loop": {
+      "description": "Run unattended execution loop until complete or blocked",
+      "template": ".opencode/commands/piv-loop.md"
+    },
+    "piv-cancel-loop": {
+      "description": "Cancel active execution loop and report backlog state",
+      "template": ".opencode/commands/piv-cancel-loop.md"
+    },
+    "piv-recover": {
+      "description": "Recover from crash or inconsistent state using pvg + nd doctor",
+      "template": ".opencode/commands/piv-recover.md"
+    },
+    "piv-retro": {
+      "description": "Manually invoke a retrospective on a completed epic",
+      "template": ".opencode/commands/piv-retro.md"
+    },
+    "piv-code-review": {
+      "description": "Comprehensive code audit (tests, mocks, modularity, security)",
+      "template": ".opencode/commands/piv-code-review.md"
+    },
+    "intake": {
+      "description": "Capture UX/visual/functional feedback and turn it into a prioritized backlog",
+      "template": ".opencode/commands/intake.md"
+    },
+    "vault-status": {
+      "description": "Show Obsidian vault health -- note counts by folder, recent notes, pending proposals",
+      "template": ".opencode/commands/vault-status.md"
+    },
+    "vault-evolve": {
+      "description": "Refine vault-backed content based on session experience",
+      "template": ".opencode/commands/vault-evolve.md"
+    },
+    "vault-capture": {
+      "description": "Trigger deliberate knowledge capture pass to vault",
+      "template": ".opencode/commands/vault-capture.md"
+    },
+    "vault-triage": {
+      "description": "Review and accept/reject pending proposals for system-scoped vault notes",
+      "template": ".opencode/commands/vault-triage.md"
+    }
+  },
+  "instructions": ["AGENTS.md"],
   "permissions": {
-    "skills": "allow",
     "bash": "allow",
     "write": "ask"
   }

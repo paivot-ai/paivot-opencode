@@ -1,18 +1,14 @@
 ---
 name: piv-init
-description: Initialize project with git and beads
+description: Initialize project with git, nd, nd FSM, and D&F document structure
 arguments: "[prefix]"
 ---
 
 # Initialize Paivot Project
 
-You are initializing a new project for the Paivot methodology. Execute the following steps:
+Initialize a new project for the Paivot methodology using nd (git-native issue tracker) with FSM enforcement.
 
-## 1. Initialize Git and Beads
-
-The user may have provided a prefix argument: `$ARGUMENTS`
-
-**Check existing state first:**
+## 1. Initialize Git and nd
 
 ```bash
 # Check if git exists
@@ -22,105 +18,75 @@ else
     git init
 fi
 
-# Check if beads exists
-if [ -d .beads ]; then
-    echo "Beads already initialized - skipping"
+# Check if nd exists
+if [ -d .nd ]; then
+    echo "nd already initialized - skipping"
 else
-    # Initialize with sync-branch mode for trunk-based development
-    # If prefix was provided, use it
-    if [ -n "$ARGUMENTS" ]; then
-        bd init --branch beads-sync --prefix "$ARGUMENTS"
-    else
-        bd init --branch beads-sync
-    fi
+    nd init
 fi
 ```
 
-**Run quickstart regardless** (it's idempotent):
-```bash
-bd quickstart
-```
+## 2. Configure nd FSM
 
-**Configure GitHub branch protection** (recommended):
-After initialization, configure GitHub to protect `main` branch (requires PR for merges). The `beads-sync` branch will accumulate work and be merged to `main` periodically via PR.
-
-## 2. Initialize the FSM (if available)
-
-If `piv` is installed, initialize the FSM tables:
+Set up the finite state machine for workflow enforcement:
 
 ```bash
-if command -v piv >/dev/null 2>&1; then
-    piv init
-    piv config set enforcement_enabled true
-else
-    echo "piv not found in PATH; D&F will proceed without FSM enforcement."
-fi
+nd config status_custom "delivered,rejected"
+nd config status_sequence "open,in_progress,delivered,closed"
+nd config status_exit_rules "blocked:open,in_progress;rejected:in_progress"
+nd config status_fsm true
 ```
+
+This enforces:
+- Linear flow: `open -> in_progress -> delivered -> closed` (no skipping)
+- Backward rework: any step can regress to earlier steps
+- `blocked` can only unblock to `open` or `in_progress`
+- `rejected` can only go to `in_progress` (re-work)
 
 ## 3. Create Project Structure
 
-Create the D&F document directories:
-
 ```bash
-mkdir -p docs
+mkdir -p docs .vault/knowledge/{decisions,patterns,debug,conventions}
 ```
 
 ## 4. Auto-Start D&F (Empty Projects Only)
 
-If there are no D&F docs and no issues yet, start Discovery & Framing by
-triggering the FSM and spawning the BLT agents.
+If there are no D&F docs and no issues yet, start Discovery & Framing:
 
 ```bash
 HAS_DOCS=0
-for f in docs/BUSINESS.md docs/DESIGN.md docs/ARCHITECTURE.md; do
+for f in BUSINESS.md DESIGN.md ARCHITECTURE.md; do
     if [ -f "$f" ]; then
         HAS_DOCS=1
         break
     fi
 done
 
-ISSUE_COUNT=$(bd list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+ISSUE_COUNT=$(nd list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
 
 if [ "$HAS_DOCS" -eq 0 ] && [ "$ISSUE_COUNT" -eq 0 ]; then
-    if command -v piv >/dev/null 2>&1; then
-        piv event start_d_and_f
-    fi
+    echo "Empty project detected. Starting Discovery & Framing..."
+    echo "Spawning Business Analyst agent first."
 fi
 ```
 
-If `piv event start_d_and_f` was triggered, call `piv next` and spawn the
-recommended BLT agent(s) (BA, Designer, Architect) until `piv next` returns
-`wait` or `spawn_sr_pm`.
-
-Example agent invocation:
-
-```
-Invoke the agent:
-@pivotal-ba "Conduct discovery. Document findings in docs/BUSINESS.md. ALL commits go to beads-sync."
-```
+If D&F should start, spawn BLT agents in sequence:
+1. `@paivot-business-analyst` -- produces BUSINESS.md
+2. `@paivot-designer` -- produces DESIGN.md
+3. `@paivot-architect` -- produces ARCHITECTURE.md
 
 ## 5. Verify Initialization
 
-Confirm the setup is correct:
-
 ```bash
-ls -la .beads/
-ls -la .git/
+ls -la .nd/
+nd stats
+nd config status_fsm
 ```
 
 ## 6. Report Status
 
-After initialization, report to the user:
+After initialization, report:
 - Git repository status
-- Beads initialization status
-- Next steps (D&F already started for empty projects; otherwise run D&F or brownfield execution)
-
-## Notes
-
-- **Safe to run multiple times** - checks for existing git/beads and skips if present
-- The `bd quickstart` command is idempotent and can be re-run safely
-- For brownfield projects, users can skip D&F and directly create stories with Sr. PM
-
-After initialization, remind the user they can:
-- Start Discovery & Framing with the BLT (Business Analyst, Designer, Architect)
-- For brownfield: directly spawn Sr. PM to create backlog from existing context
+- nd initialization status
+- FSM configuration
+- Next steps (D&F for greenfield, or direct backlog creation for brownfield)
