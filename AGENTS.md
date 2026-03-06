@@ -293,16 +293,160 @@ nd stale --days=14                            # Neglected issues
 nd stats                                      # Backlog statistics
 ```
 
-## Git Workflow: Branch-per-Epic
+## Git Workflow: Two-Level Branch Model for OpenCode
 
-After Sr PM creates an epic, create the working branch:
+Paivot uses a two-level branching strategy for OpenCode: `main → epic → story`.
+
+### Overview
+
+The two-level model enables parallel story development within an epic while maintaining
+PM review gating before integration. Each epic gets a working branch, and each story
+gets an isolated story branch created from that epic branch.
+
+**Branch hierarchy:**
+- `main` -- stable, production-ready code (no direct story commits)
+- `epic/<EPIC-ID>-<Brief-Desc>` -- integration point for all stories in the epic
+- `story/<STORY-ID>-<Brief-Desc>` -- isolated story branch, created from epic branch
+
+### Story Branch Setup (Dispatcher)
+
+Before spawning a developer on a story:
 
 ```bash
-git checkout -b epic/<EPIC-ID>-<Brief-Desc> main
+# Ensure epic branch exists
+git fetch origin
+if ! git rev-parse --verify origin/epic/<EPIC-ID> >/dev/null 2>&1; then
+  git checkout -b epic/<EPIC-ID>-<Brief-Desc> origin/main
+  git push -u origin epic/<EPIC-ID>-<Brief-Desc>
+fi
+
+# Create story branch from epic
+git checkout -b story/<STORY-ID>-<Brief-Desc> origin/epic/<EPIC-ID>-<Brief-Desc>
+git push -u origin story/<STORY-ID>-<Brief-Desc>
 ```
 
-All stories in the epic are developed on this branch. After all stories are accepted
-and the epic is closed, merge to main and delete the branch.
+The developer works in a worktree rooted at `story/<STORY-ID>`. They cannot
+accidentally push to the epic or main branch -- the worktree is isolated to their
+story branch.
+
+### PM Review Before Integration (Dispatcher + PM-Acceptor)
+
+After a developer marks a story as delivered:
+
+1. **PM-Acceptor reviews the story branch** (not merged yet)
+   - Reviews code, tests, and acceptance criteria on the story branch
+   - Either approves (adds `accepted` label) or rejects (adds `rejected` label with notes)
+
+2. **If rejected:** Developer fixes on the story branch, re-marks delivered, PM reviews again
+
+3. **If approved:** Dispatcher merges story→epic (see Story Merge section below)
+
+### Story Merge to Epic (Dispatcher)
+
+After PM-Acceptor approves and adds the `accepted` label:
+
+```bash
+git fetch origin
+git checkout epic/<EPIC-ID>-<Brief-Desc>
+git pull origin epic/<EPIC-ID>-<Brief-Desc>  # Latest (other stories may have merged)
+
+# Attempt merge
+if ! git merge --no-ff origin/story/<STORY-ID>-<Brief-Desc> \
+     -m "merge(epic/<EPIC-ID>): integrate <STORY-ID>"; then
+  # Conflict detected
+  echo "Merge conflict detected. Spawning developer to resolve..."
+  # Spawn Developer with: "Resolve merge conflict between story/<STORY-ID> and epic/<EPIC-ID>"
+  # Developer resolves on story branch, dispatcher retries merge
+  exit 1
+fi
+
+git push origin epic/<EPIC-ID>-<Brief-Desc>
+
+# Cleanup story branch
+git push origin --delete story/<STORY-ID>-<Brief-Desc>
+```
+
+**Merge order:** If multiple stories are waiting to merge, process in priority order
+(P0 first). Check dependencies with `nd show <STORY-ID>` to detect blockers; merge
+dependencies first.
+
+### Epic Completion: All Stories Merged and Accepted
+
+When all stories in the epic have been approved and merged to the epic branch:
+
+1. **Ensure epic branch is stable**
+   ```bash
+   git fetch origin
+   git checkout epic/<EPIC-ID>-<Brief-Desc>
+   git pull origin epic/<EPIC-ID>-<Brief-Desc>
+   ```
+
+2. **Verify CI passes** (full test suite with all stories integrated)
+
+3. **Create PR to main**
+   ```bash
+   gh pr create \
+     --base main \
+     --head epic/<EPIC-ID>-<Brief-Desc> \
+     --title "epic(<EPIC-ID>): [epic title from nd]" \
+     --body "Completed epic with X stories"
+   ```
+
+4. **Wait for:**
+   - [ ] CI passes on PR
+   - [ ] User/PM approval
+
+5. **Merge and cleanup:**
+   ```bash
+   # Merge to main
+   git checkout main
+   git pull origin main
+   git merge --no-ff origin/epic/<EPIC-ID>-<Brief-Desc> \
+     -m "Merge epic/<EPIC-ID>-<Brief-Desc> to main"
+   git push origin main
+
+   # Delete epic branch
+   git push origin --delete epic/<EPIC-ID>-<Brief-Desc>
+   ```
+
+### Dispatcher Git Responsibilities
+
+You manage all git integration:
+
+- **Create epic branches** when Sr PM creates an epic
+- **Create story branches** from epic branch before spawning developer
+- **Merge story→epic** after PM-Acceptor approval
+- **Resolve merge conflicts** by spawning developer if conflicts arise during story merge
+- **Create PR epic→main** after all stories are merged and epic is complete
+- **Cleanup branches** after merge (delete story branches after merge to epic, delete
+  epic branch after merge to main)
+
+### Branch Naming Conventions
+
+Use these patterns consistently:
+
+- **Epic branch:** `epic/<EPIC-ID>-<brief-slug>` (e.g., `epic/E1-auth-system`)
+- **Story branch:** `story/<STORY-ID>-<brief-slug>` (e.g., `story/S3-jwt-validation`)
+
+The brief slug is a lowercase, hyphenated summary (max 30 chars after ID). Examples:
+- `epic/E1-user-auth`
+- `story/S2-password-reset`
+- `epic/E5-payment-gateway-integration`
+
+### Worktree Cleanup (After Developer Completes)
+
+After merging a developer's story branch to epic, clean up the worktree:
+
+```bash
+git worktree remove --force .claude/worktrees/<agent-id> && git branch -D worktree-<agent-id>
+```
+
+Always use `--force` and `-D`:
+- `--force` removes the worktree even with uncommitted changes
+- `-D` (uppercase) deletes the branch even if it hasn't been merged to origin
+
+Do NOT use `git worktree remove` without `--force` or `git branch -d` without `-D` --
+these will fail.
 
 ## Agent Operating Rules (apply to ALL agents)
 
