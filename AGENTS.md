@@ -88,6 +88,9 @@ Use `@paivot-<role>` to reference agents:
 @paivot-business-analyst   # Business Analyst
 @paivot-anchor             # Anchor (adversarial reviewer)
 @paivot-retro              # Retrospective
+@paivot-ba-challenger      # BA Challenger (D&F specialist review)
+@paivot-designer-challenger # Designer Challenger (D&F specialist review)
+@paivot-architect-challenger # Architect Challenger (D&F specialist review)
 ```
 
 ## Scope Guard (Soft Enforcement)
@@ -167,25 +170,67 @@ BLT agents produce three documents sequentially with questioning rounds.
      "You produced <DOCUMENT>.md without asking questions first. Your FIRST output
      MUST be a QUESTIONS_FOR_USER block. Start with questions."
      (Max 2 re-spawn attempts. If still failing, escalate to user.)
-3. Spawn `@paivot-designer` with BUSINESS.md content
-4. Same first-turn gate + relay loop until DESIGN.md produced
-5. Spawn `@paivot-architect` with BUSINESS.md + DESIGN.md
-6. Same first-turn gate + relay loop until ARCHITECTURE.md produced
+3. **SPECIALIST REVIEW** (conditional -- see Specialist Review Loop below):
+   If `dnf.specialist_review` is enabled, spawn `@paivot-ba-challenger` to review BUSINESS.md.
+4. Spawn `@paivot-designer` with BUSINESS.md content
+5. Same first-turn gate + relay loop until DESIGN.md produced
+6. **SPECIALIST REVIEW** (conditional):
+   If `dnf.specialist_review` is enabled, spawn `@paivot-designer-challenger` to review DESIGN.md.
+7. Spawn `@paivot-architect` with BUSINESS.md + DESIGN.md
+8. Same first-turn gate + relay loop until ARCHITECTURE.md produced
+9. **SPECIALIST REVIEW** (conditional):
+   If `dnf.specialist_review` is enabled, spawn `@paivot-architect-challenger` to review ARCHITECTURE.md.
 
 ### BLT Convergence (MANDATORY after all three documents exist)
 
-7. Re-spawn each BLT agent in cross-review mode (can run in parallel, max 3):
-   - BA: cross-review DESIGN.md and ARCHITECTURE.md against BUSINESS.md
-   - Designer: cross-review BUSINESS.md and ARCHITECTURE.md against DESIGN.md
-   - Architect: cross-review BUSINESS.md and DESIGN.md against ARCHITECTURE.md
-8. Check outputs for `BLT_ALIGNED` vs `BLT_INCONSISTENCIES`
-   - All aligned: proceed to Post-D&F
-   - Any inconsistencies: collect, present to user, fix, re-run (max 3 rounds)
+10. Re-spawn each BLT agent in cross-review mode (can run in parallel, max 3):
+    - BA: cross-review DESIGN.md and ARCHITECTURE.md against BUSINESS.md
+    - Designer: cross-review BUSINESS.md and ARCHITECTURE.md against DESIGN.md
+    - Architect: cross-review BUSINESS.md and DESIGN.md against ARCHITECTURE.md
+11. Check outputs for `BLT_ALIGNED` vs `BLT_INCONSISTENCIES`
+    - All aligned: proceed to Post-D&F
+    - Any inconsistencies: collect, present to user, fix, re-run (max 3 rounds)
 
 ### Light D&F
 
 Same BLT sequence with the same FIRST-TURN GATE. Agents draft with fewer questioning
-rounds (1-2 instead of 3-5). BLT Convergence still applies.
+rounds (1-2 instead of 3-5). BLT Convergence still applies. Specialist review also
+applies if `dnf.specialist_review` is enabled.
+
+### Specialist Review Loop
+
+When `dnf.specialist_review` is enabled (check `.vault/knowledge/.settings.yaml`),
+each BLT document goes through an adversarial review after creation. This catches
+omissions, hallucinations, and drift before they cascade downstream.
+
+**Procedure (applies identically after each BLT step):**
+
+1. After the creator agent (BA/Designer/Architect) produces its document, spawn the
+   matching challenger:
+   - BUSINESS.md produced --> spawn `@paivot-ba-challenger`
+   - DESIGN.md produced --> spawn `@paivot-designer-challenger`
+   - ARCHITECTURE.md produced --> spawn `@paivot-architect-challenger`
+
+2. Provide the challenger with:
+   - The document under review
+   - All upstream documents (BUSINESS.md for Designer/Architect, DESIGN.md for Architect)
+   - Original user context
+   - Iteration number (starts at 1)
+
+3. Check the challenger's output for `REVIEW_RESULT`:
+   - **REVIEW_RESULT: APPROVED** --> proceed to the next BLT step
+   - **REVIEW_RESULT: REJECTED** --> re-spawn the creator agent with the
+     `FEEDBACK_FOR_CREATOR` block. Increment iteration. Re-run challenger on the
+     updated document.
+
+4. Loop up to `dnf.max_iterations` (default: 3). If the document is still rejected
+   after max iterations, escalate to the user with the accumulated issues.
+
+**Key rules:**
+- Challengers are read-only -- they never write files or talk to the user
+- Challengers use Sonnet (cheap, focused review) -- not Opus
+- The dispatcher relays feedback; challengers never interact with creators directly
+- Each challenger only reviews its own document scope (BA Challenger does not review DESIGN.md, etc.)
 
 ### Post-D&F
 
@@ -241,6 +286,10 @@ When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
 2. Spawn `@paivot-sr-pm` in Bug Triage Mode
 3. Sr PM creates fully structured bugs with AC, epic placement, and chain
 4. All bugs are P0. No exceptions.
+
+Note: When `bug_fast_track` is enabled (or story has `pm-creates-bugs` label),
+PM-Acceptor creates bugs directly -- there may be no `DISCOVERED_BUG` blocks for
+those stories.
 
 ### Epic Auto-Close
 

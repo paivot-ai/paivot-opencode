@@ -8,7 +8,7 @@
   },
   "agent": {
     "paivot-sr-pm": {
-      "description": "Creates comprehensive backlog from D&F documents with embedded context. Also the ONLY agent authorized to create bugs -- receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.",
+      "description": "Creates comprehensive backlog from D&F documents with embedded context. Also the DEFAULT agent authorized to create bugs -- when bug_fast_track is enabled, PM-Acceptor can create bugs directly with guardrails. Receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.",
       "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-sr-pm.md"
@@ -54,6 +54,24 @@
       "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-retro.md"
+    },
+    "paivot-ba-challenger": {
+      "description": "Adversarial review of BUSINESS.md for omissions, hallucinations, and drift. Only spawned when dnf.specialist_review is enabled.",
+      "model": "anthropic/claude-sonnet-4-6-20250514",
+      "mode": "subagent",
+      "prompt": ".opencode/agent/paivot-ba-challenger.md"
+    },
+    "paivot-designer-challenger": {
+      "description": "Adversarial review of DESIGN.md for unmet user needs, hallucinations, and contradictions with BUSINESS.md. Only spawned when dnf.specialist_review is enabled.",
+      "model": "anthropic/claude-sonnet-4-6-20250514",
+      "mode": "subagent",
+      "prompt": ".opencode/agent/paivot-designer-challenger.md"
+    },
+    "paivot-architect-challenger": {
+      "description": "Adversarial review of ARCHITECTURE.md for unmet requirements, untraceable decisions, and contradictions. Only spawned when dnf.specialist_review is enabled.",
+      "model": "anthropic/claude-sonnet-4-6-20250514",
+      "mode": "subagent",
+      "prompt": ".opencode/agent/paivot-architect-challenger.md"
     }
   },
   "command": {

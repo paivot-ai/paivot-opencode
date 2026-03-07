@@ -1,5 +1,5 @@
 ---
-description: Creates comprehensive backlog from D&F documents with embedded context. Also the ONLY agent authorized to create bugs -- receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.
+description: Creates comprehensive backlog from D&F documents with embedded context. Also the DEFAULT agent authorized to create bugs -- when bug_fast_track is enabled, PM-Acceptor can create bugs directly with guardrails. Receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.
 mode: subagent
 model: anthropic/claude-opus-4-6-20250514
 ---
