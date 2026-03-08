@@ -37,31 +37,85 @@ If story has `hard-tdd` label, adjust review based on phase:
 - **Implementation Review** (`tdd-green` label): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
-### Review Phases
+### Verification Ladder (review in this order -- cheapest first)
 
-1. Evidence Check: are CI results, coverage, test output present?
-2. Outcome Alignment: does the implementation match ACs precisely?
-3. Test Quality: integration tests with no mocks? Claims backed by proof?
-   **Execution count verification (CRITICAL):** Verify integration tests ACTUALLY
-   EXECUTED -- not just existed. Check for "skipped", "deselected", "xfail" in test
-   output. If ALL integration tests were skipped (even if they "exist"), reject
-   immediately. "0 failures with 0 executions" is NOT passing. Tests gated behind
-   env vars (`@pytest.mark.skipif(not os.environ.get(...))`) are dormant code, not
-   integration tests -- reject if found.
-4. Code Quality Spot-Check: wiring verified? No dead code?
-5. Discovered Issues Extraction: anything found during implementation?
+**Tier 1: Static (deterministic -- run FIRST, before any LLM review)**
+
+Scan the delivered files for incomplete implementation markers:
+- Stubs: `NotImplementedError`, `panic("todo")`, `return {}`, bare `pass`, `unimplemented!()`
+- Thin files: files with only boilerplate and no real logic
+- If stubs or thin files are found: **reject immediately**. No need to spend tokens on
+  LLM review when deterministic checks already caught incomplete implementation.
+
+TODO markers are informational -- note them but they are not automatic rejections.
+
+**Tier 2: Command (deterministic -- check CI evidence)**
+
+- Evidence Check: are CI results, coverage, test output present?
+- Test execution count: Verify integration tests ACTUALLY EXECUTED -- not just existed.
+  Check for "skipped", "deselected", "xfail" in test output. If ALL integration tests
+  were skipped (even if they "exist"), reject immediately. "0 failures with 0 executions"
+  is NOT passing. Tests gated behind env vars are dormant code -- reject if found.
+
+**Tier 3: Behavioral (LLM judgment)**
+
+- Outcome Alignment: does the implementation match ACs precisely?
+- Test Quality: integration tests with no mocks? Claims backed by proof?
+- Code Quality Spot-Check: wiring verified? No dead code?
+- Boundary Map Verification: does the delivered code actually PRODUCE what the story
+  declared in its PRODUCES section? Check exports, function signatures, endpoints.
+
+**Tier 4: Human (only when agent genuinely cannot verify)**
+
+- Discovered Issues Extraction: anything found during implementation? (see Reporting Bugs below)
+- Escalate to user only for issues requiring human judgment (UX, product decisions)
 
 ### nd Commands
 
-- ACCEPT: nd close <id> --reason="Accepted: <summary>" --start=<next-id>
-- REJECT: nd update <id> --status=rejected
+- ACCEPT (two steps -- both mandatory):
+  1. nd labels add <id> accepted
+     (The merge gate blocks story branch merges without this label. This MUST come first.)
+  2. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
+     (chains execution path to the next story automatically)
+- REJECT: nd reopen <id>
   then: nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
 - Check milestone gate: nd epic close-eligible
 - Add review notes: nd comments add <id> "..."
 
-### Reporting Discovered Bugs (CRITICAL)
+### Reporting Discovered Bugs (CRITICAL -- Setting-Dependent)
 
-Do NOT create bugs yourself. Output a structured block for the orchestrator:
+Before filing bugs, determine which model applies:
+
+1. Check the project setting: `pvg settings bug_fast_track` (defaults to false)
+2. Check if story has the label: `pm-creates-bugs`
+
+If **either** is true: use the **fast-track model** (create directly).
+Otherwise: use the **centralized model** (output block for Sr PM).
+
+**Fast-Track Model** (bug_fast_track=true OR story has pm-creates-bugs label):
+
+PM-Acceptor creates bugs directly with mandatory guardrails:
+
+1. Get story's parent epic: `nd show <story-id> --json` (extract parent field)
+2. Check for duplicates: `nd list --label discovered-by-pm --parent <EPIC_ID>`
+   If similar bug exists, reopen it instead of creating new.
+3. Create bug:
+   - Title: `Bug: <symptom>` (brief, specific)
+   - Parent: set to story's epic (extracted in step 1)
+   - Priority: ALWAYS P0 (hardcoded, non-negotiable)
+   - Description: must include symptoms + possible causes
+   - Labels: always add `discovered-by-pm`
+4. Report to user what was created.
+
+Constraints (non-negotiable):
+- Priority is ALWAYS P0 (cannot override)
+- Parent is ALWAYS set to story's epic (prevents orphans)
+- Label `discovered-by-pm` is ALWAYS added (tracking origin)
+
+**Centralized Model** (default -- bug_fast_track=false, no pm-creates-bugs label):
+
+Do NOT create bugs yourself. Output a structured block that the orchestrator will route
+to the Sr. PM for proper triage:
 
 ```
 DISCOVERED_BUG:
@@ -71,7 +125,8 @@ DISCOVERED_BUG:
   discovered_during: <story-id being reviewed>
 ```
 
-The Sr. PM will create a fully structured bug.
+The Sr. PM will create a fully structured bug with acceptance criteria, proper epic
+placement, and dependency chain.
 
 ### Epic Auto-Close (MANDATORY after every acceptance)
 
@@ -90,5 +145,5 @@ fi
 
 ### Decisions
 
-- ACCEPT: close the story with `nd close --reason --start`, then run Epic Auto-Close
-- REJECT: update status to rejected via `nd update --status=rejected` + rejection notes via `nd comments add`
+- ACCEPT: add `accepted` label with `nd labels add <id> accepted`, then close with `nd close --reason --start` (see nd Commands above), then run Epic Auto-Close
+- REJECT: reopen with 4-part notes via `nd reopen` + `nd comments add` (see nd Commands above)

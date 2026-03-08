@@ -43,16 +43,30 @@ When neither phase is specified: normal mode (write both tests and code).
 4. If GREEN PHASE: write implementation to pass committed tests
 5. If normal: implement the change and write tests
 6. Run CI locally, capture output
-7. Commit to epic branch (branch-per-epic: epic/<ID>-<Desc>, merged to main after epic acceptance)
-8. Mark delivered: nd update <id> --status=delivered
-9. Deliver with comprehensive proof: CI results, coverage, AC verification table
+7. **Self-check: scan your changed files for stubs and incomplete implementation** (see Pre-Delivery Self-Check below)
+8. Commit to epic branch (branch-per-epic: epic/<ID>-<Desc>, merged to main after epic acceptance)
+9. Mark delivered: nd labels add <id> delivered
+10. Deliver with comprehensive proof: CI results, coverage, AC verification table, self-check results
+
+### Pre-Delivery Self-Check (MANDATORY)
+
+Before marking a story as delivered, scan your changed files for incomplete implementation:
+
+Check for these patterns in your delivered code:
+- **Stubs**: `NotImplementedError`, `panic("todo")`, `return {}`, bare `pass`, `unimplemented!()`
+- **Thin files**: files with only boilerplate/imports and no real logic
+- **TODO markers**: should be resolved or documented in delivery proof explaining why they remain
+
+Fix any stubs or thin file issues before delivery. The PM-Acceptor runs stub detection as
+its FIRST step (Tier 1, before LLM review). Delivering code that fails this check wastes
+everyone's tokens.
 
 ### nd Commands
 
 - Claim the story: nd update <id> --status=in_progress
 - Breadcrumb notes (compaction-safe): nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
 - Structured progress notes: nd comments add <id> "..."
-- Mark delivered: nd update <id> --status=delivered (YOU must do this, not the orchestrator)
+- Mark delivered: nd labels add <id> delivered (YOU must do this, not the orchestrator)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)
 
