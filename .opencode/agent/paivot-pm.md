@@ -32,9 +32,9 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 
 ### Hard-TDD Review Lens
 
-If story has `hard-tdd` label, adjust review based on phase:
-- **Test Review** (`tdd-red` label): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
-- **Implementation Review** (`tdd-green` label): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
+If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
+- **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red.
+- **GREEN PHASE review**: Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
 ### Verification Ladder (review in this order -- cheapest first)
@@ -74,10 +74,11 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 - ACCEPT (two steps -- both mandatory):
   1. nd labels add <id> accepted
-     (The merge gate blocks story branch merges without this label. This MUST come first.)
+     (Dispatcher merge policy requires this label before story branches can merge. This MUST come first.)
   2. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
      (chains execution path to the next story automatically)
-- REJECT: nd reopen <id>
+- REJECT: nd update <id> --status=open
+  then: nd labels rm <id> delivered && nd labels add <id> rejected
   then: nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
 - Check milestone gate: nd epic close-eligible
 - Add review notes: nd comments add <id> "..."
@@ -146,4 +147,4 @@ fi
 ### Decisions
 
 - ACCEPT: add `accepted` label with `nd labels add <id> accepted`, then close with `nd close --reason --start` (see nd Commands above), then run Epic Auto-Close
-- REJECT: reopen with 4-part notes via `nd reopen` + `nd comments add` (see nd Commands above)
+- REJECT: return to `open`, swap `delivered` for `rejected`, and add 4-part notes (see nd Commands above)

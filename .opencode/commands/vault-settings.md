@@ -29,9 +29,9 @@ session_start_max_notes: 10
 auto_init_project_vault: ask
 stack_detection: false
 workflow.fsm: true
-workflow.sequence: open,in_progress,delivered,closed
+workflow.sequence: open,in_progress,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
-workflow.custom_statuses: delivered,rejected
+workflow.custom_statuses: rejected
 architecture.c4: false
 loop.persist_across_sessions: false
 ```

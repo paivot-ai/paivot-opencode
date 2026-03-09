@@ -18,8 +18,8 @@ Cancel the active piv-loop execution loop and report backlog state.
    ```bash
    nd ready --json | jq length
    nd list --status in_progress --json | jq length
-   nd list --status delivered --json | jq length
-   nd list --status rejected --json | jq length
+   nd list --status in_progress --label delivered --json | jq length
+   nd list --status open --label rejected --json | jq length
    nd blocked --json | jq length
    ```
 

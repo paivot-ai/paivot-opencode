@@ -6,7 +6,7 @@ arguments: "[prefix]"
 
 # Initialize Paivot Project
 
-Initialize a new project for the Paivot methodology using nd (git-native issue tracker) with FSM enforcement.
+Initialize a new project for the Paivot methodology using nd plus pvg-managed workflow settings.
 
 ## 1. Initialize Git and nd
 
@@ -19,7 +19,7 @@ else
 fi
 
 # Check if nd exists
-if [ -d .nd ]; then
+if [ -f .vault/.nd.yaml ]; then
     echo "nd already initialized - skipping"
 else
     nd init
@@ -28,20 +28,26 @@ fi
 
 ## 2. Configure nd FSM
 
-Set up the finite state machine for workflow enforcement:
+Set up the base finite state machine for workflow enforcement:
 
 ```bash
-nd config status_custom "delivered,rejected"
-nd config status_sequence "open,in_progress,delivered,closed"
-nd config status_exit_rules "blocked:open,in_progress;rejected:in_progress"
-nd config status_fsm true
+pvg settings \
+  workflow.fsm=true \
+  workflow.sequence=open,in_progress,closed \
+  workflow.custom_statuses=rejected \
+  workflow.exit_rules=blocked:open,in_progress;rejected:in_progress
 ```
 
 This enforces:
-- Linear flow: `open -> in_progress -> delivered -> closed` (no skipping)
+- Base flow: `open -> in_progress -> closed` (no skipping)
 - Backward rework: any step can regress to earlier steps
 - `blocked` can only unblock to `open` or `in_progress`
-- `rejected` can only go to `in_progress` (re-work)
+- `rejected` can only go to `in_progress` when used as an escape status
+
+Paivot delivery semantics still use the shared contract:
+- `delivered` = nd `in_progress` + `delivered` label
+- `accepted` = nd `closed` + `accepted` label
+- `rejected` = nd `open` + `rejected` label
 
 ## 3. Create Project Structure
 
@@ -78,9 +84,9 @@ If D&F should start, spawn BLT agents in sequence:
 ## 5. Verify Initialization
 
 ```bash
-ls -la .nd/
+ls -la .vault/
 nd stats
-nd config status_fsm
+nd config get status.fsm
 ```
 
 ## 6. Report Status

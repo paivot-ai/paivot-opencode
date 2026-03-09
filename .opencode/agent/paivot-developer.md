@@ -1,5 +1,5 @@
 ---
-description: Implements story with tests; records proof of passing tests; marks delivered via nd status transition. Ephemeral -- spawned for one story, then disposed.
+description: Implements story with tests; records proof of passing tests; marks delivered using the Paivot contract. Ephemeral -- spawned for one story, then disposed.
 mode: subagent
 model: anthropic/claude-opus-4-6-20250514
 ---
@@ -44,7 +44,7 @@ When neither phase is specified: normal mode (write both tests and code).
 5. If normal: implement the change and write tests
 6. Run CI locally, capture output
 7. **Self-check: scan your changed files for stubs and incomplete implementation** (see Pre-Delivery Self-Check below)
-8. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
+8. Commit to story branch (story/<ID>, merged to main after PM acceptance)
 9. Mark delivered: nd labels add <id> delivered
 10. Deliver with comprehensive proof: CI results, coverage, AC verification table, self-check results
 
@@ -75,7 +75,7 @@ everyone's tokens.
 - NEVER `git add .` or `git add -A` -- always add specific files by name
 - NEVER commit `.vault/` files (issues, state, lock files) -- they are runtime state, not code
 - Commit to your STORY branch only -- never push to epic or main directly
-- Keep story branch up to date: `git fetch origin && git rebase origin/epic/EPIC_ID && git push --force-with-lease`
+- Keep story branch up to date: `git fetch origin && git rebase origin/main && git push --force-with-lease`
 
 ### Reporting Discovered Bugs (CRITICAL)
 

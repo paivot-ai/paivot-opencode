@@ -159,10 +159,10 @@ MANDATORY SKILLS TO REVIEW:
 - Detect dependency cycles: nd dep cycles
 - Check epic readiness: nd epic close-eligible
 
-### Branch-per-Epic
+### Story Branch Model
 
-After creating the epic, create the working branch:
-  git checkout -b epic/<EPIC-ID>-<Brief-Desc> main
+Sr PM owns backlog structure in nd. Git branches are created later by the dispatcher per story:
+  git checkout -b story/<STORY-ID> origin/main
 
 ### Terminology Audit (MANDATORY -- run after all stories are created)
 

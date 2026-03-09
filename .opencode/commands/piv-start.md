@@ -13,13 +13,13 @@ one developer agent to implement it.
 
 1. **Check for delivered work first** (PM-Acceptor has priority):
    ```bash
-   nd list --status delivered --json
+   nd list --status in_progress --label delivered --json
    ```
    If any stories are delivered, spawn `@paivot-pm` to review the first one.
 
 2. **Check for rejected work** (fix before new work):
    ```bash
-   nd list --status rejected --json
+   nd list --status open --label rejected --json
    ```
    If any stories are rejected, spawn `@paivot-developer` to address the first one.
 
@@ -43,7 +43,7 @@ one developer agent to implement it.
 
 6. **After developer finishes**:
    - Scan output for `DISCOVERED_BUG:` blocks. If found, spawn `@paivot-sr-pm` for bug triage.
-   - The story should now be in `delivered` status.
+   - The story should now be `in_progress` with the `delivered` label.
    - Spawn `@paivot-pm` to review the delivered story.
 
 7. **Report**:

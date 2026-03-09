@@ -32,8 +32,8 @@ Recover from a crash, context compaction, or inconsistent state.
 3. **Check current state**:
    ```bash
    nd list --status in_progress --json
-   nd list --status delivered --json
-   nd list --status rejected --json
+   nd list --status in_progress --label delivered --json
+   nd list --status open --label rejected --json
    nd ready --json | jq length
    nd blocked --json | jq length
    ```

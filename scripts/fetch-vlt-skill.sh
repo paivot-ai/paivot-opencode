@@ -2,7 +2,7 @@
 # fetch-vlt-skill.sh -- Download and install the vlt skill from GitHub.
 #
 # Fetches the vlt skill from a pinned release of the RamXX/vlt repository
-# and installs it to the user's global Claude Code skills directory.
+# and installs it to the user's global OpenCode skills directory.
 # Verifies the download with SHA256 checksum.
 #
 # Usage:
@@ -14,7 +14,7 @@ set -euo pipefail
 REPO="RamXX/vlt"
 VERSION="v0.9.0"
 EXPECTED_SHA256="cf91fe6ea74b97d3da982c3ee402b8df2abeedc7725a4324b74f2da04d4fa888"
-SKILL_DIR="$HOME/.claude/skills/vlt-skill"
+SKILL_DIR="$HOME/.config/opencode/skills/vlt-skill"
 FORCE=false
 
 if [[ "${1:-}" == "--force" ]]; then

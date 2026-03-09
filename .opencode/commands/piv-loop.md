@@ -45,7 +45,7 @@ Each iteration, pick work in this order:
 
 1. **PM-Acceptor for delivered stories** (unblock the pipeline)
    ```bash
-   nd list --status delivered --json
+   nd list --status in_progress --label delivered --json
    ```
    For each: spawn `@paivot-pm` agent to review and accept/reject.
    **The PM-Acceptor closes the story itself** (`nd close --reason`). Do NOT
@@ -54,7 +54,7 @@ Each iteration, pick work in this order:
 
 2. **Developer for rejected stories** (fix before starting new work)
    ```bash
-   nd list --status rejected --json
+   nd list --status open --label rejected --json
    ```
    For each: spawn `@paivot-developer` agent to address rejection notes.
 
@@ -68,8 +68,8 @@ Each iteration, pick work in this order:
 
 **nd filter cheat sheet**:
 - Priority: `--priority 0` (not `--label P0`)
-- Status: `--status delivered`, `--status rejected`
-- Labels: `--label hard-tdd`, `--label tdd-red`, `--label tdd-green`
+- Status: `--status in_progress`, `--status open`
+- Labels: `--label delivered`, `--label rejected`, `--label hard-tdd`
 - Type: `--type bug`, `--type task`, `--type epic`
 - Parent: `--parent <epic-id>`
 
@@ -128,7 +128,7 @@ creating dormant tests that satisfy no testing gate.
 | Role | Agent | When |
 |------|-------|------|
 | Sr. PM (bug triage) | `@paivot-sr-pm` | DISCOVERED_BUG blocks found |
-| PM-Acceptor | `@paivot-pm` | Stories with `delivered` status |
+| PM-Acceptor | `@paivot-pm` | Stories with `delivered` label |
 | Developer | `@paivot-developer` | Ready or rejected stories |
 
 ## Developer Spawning: Normal vs Hard-TDD
@@ -155,8 +155,8 @@ Check termination after each iteration by querying nd directly:
 
 ```bash
 # Check if any work remains
-DELIVERED=$(nd list --status delivered --json | jq 'length')
-REJECTED=$(nd list --status rejected --json | jq 'length')
+DELIVERED=$(nd list --status in_progress --label delivered --json | jq 'length')
+REJECTED=$(nd list --status open --label rejected --json | jq 'length')
 READY=$(nd ready --json | jq 'length')
 IN_PROGRESS=$(nd list --status in_progress --json | jq 'length')
 

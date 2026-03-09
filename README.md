@@ -8,7 +8,7 @@
 
 Paivot adapts the [Pivotal Labs methodology](docs/pivotal_methodology.md) -- the disciplined system of balanced teams, Discovery & Framing, and XP engineering practices that Pivotal Labs used to ship software for decades -- for a world where the builders are AI agents rather than human teams.
 
-This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-graph) (the Claude Code plugin). The methodology is identical; only the runtime format differs.
+This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-graph) (the Claude Code plugin). The core methodology is shared, but the enforcement model is adapted to OpenCode's architecture.
 
 ---
 
@@ -54,9 +54,9 @@ For empty projects, `/piv-init` automatically begins Discovery & Framing.
 
 ## How It Works
 
-### nd FSM -- Workflow Enforcement Without Hooks
+### nd FSM -- Base Workflow Enforcement
 
-OpenCode does not have Claude Code's JSON hook system. Instead, Paivot uses **nd's built-in finite state machine** to enforce workflow transitions:
+OpenCode does not have Claude Code's JSON hook system. Paivot therefore uses **nd's built-in finite state machine** for base status transitions, while the dispatcher enforces the higher-level delivery and merge choreography:
 
 ```
 open --> in_progress --> delivered --> closed
@@ -65,21 +65,21 @@ open --> in_progress --> delivered --> closed
               rejected
 ```
 
-Configuration (set by `/piv-init`):
+Configuration (set by `/piv-init` through `pvg settings`):
 
 ```yaml
-status_custom: "delivered,rejected"
-status_sequence: "open,in_progress,delivered,closed"
-status_exit_rules: "blocked:open,in_progress;rejected:in_progress"
-status_fsm: true
+status.custom: "rejected"
+status.sequence: "open,in_progress,closed"
+status.exit_rules: "blocked:open,in_progress;rejected:in_progress"
+status.fsm: true
 ```
 
-nd **rejects invalid transitions** at the CLI level. A developer cannot mark a story `closed` (only `delivered`). A PM cannot close a story that hasn't been delivered. The FSM is passive enforcement -- no hooks needed.
+nd rejects invalid base transitions at the CLI level. A developer cannot close a story directly, and a PM cannot close a story that has not progressed through `in_progress`. Delivery markers such as `delivered`, `accepted`, and `rejected` are still part of the Paivot contract and are enforced by dispatcher policy in OpenCode.
 
 ### Dispatcher Pattern
 
 When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
-- Queries nd for work (`nd list --status delivered`, `nd ready`)
+- Queries nd for work (`nd list --status in_progress --label delivered`, `nd ready`)
 - Spawns specialized agents (`@paivot-developer`, `@paivot-pm`, etc.)
 - Relays questions from agents to the user
 - Never writes code, D&F documents, or stories itself
@@ -148,7 +148,7 @@ If the vault is unavailable, each agent has embedded fallback instructions. This
 | Instructions file | `CLAUDE.md` | `AGENTS.md` |
 | Agent mode | Implicit | Explicit `mode: subagent` |
 | Loop control | `pvg hook stop` | Inline nd state checks |
-| Git workflow | `beads-sync` trunk branch | `epic/<ID>-<Desc>` branch per epic |
+| Git workflow | `beads-sync` trunk branch | `main` + `story/<ID>` branches |
 | Issue tracker | `nd` (with label-based delivery) | `nd` (with FSM status-based delivery) |
 
 ---
