@@ -423,40 +423,20 @@ dependencies first.
 
 When all stories in the epic have been approved and merged to the epic branch:
 
-1. **Ensure epic branch is stable**
-   ```bash
-   git fetch origin
-   git checkout epic/<EPIC-ID>-<Brief-Desc>
-   git pull origin epic/<EPIC-ID>-<Brief-Desc>
-   ```
+```bash
+git fetch origin
+git checkout main
+git pull origin main
+git merge --no-ff origin/epic/<EPIC-ID>-<Brief-Desc> \
+  -m "Merge epic/<EPIC-ID>-<Brief-Desc> to main"
+git push origin main
 
-2. **Verify CI passes** (full test suite with all stories integrated)
+# Delete epic branch
+git push origin --delete epic/<EPIC-ID>-<Brief-Desc>
+```
 
-3. **Create PR to main**
-   ```bash
-   gh pr create \
-     --base main \
-     --head epic/<EPIC-ID>-<Brief-Desc> \
-     --title "epic(<EPIC-ID>): [epic title from nd]" \
-     --body "Completed epic with X stories"
-   ```
-
-4. **Wait for:**
-   - [ ] CI passes on PR
-   - [ ] User/PM approval
-
-5. **Merge and cleanup:**
-   ```bash
-   # Merge to main
-   git checkout main
-   git pull origin main
-   git merge --no-ff origin/epic/<EPIC-ID>-<Brief-Desc> \
-     -m "Merge epic/<EPIC-ID>-<Brief-Desc> to main"
-   git push origin main
-
-   # Delete epic branch
-   git push origin --delete epic/<EPIC-ID>-<Brief-Desc>
-   ```
+Note: This is a solo-developer workflow -- epics merge directly to main without PRs.
+PR-based review gates belong in paivot-enterprise for team workflows.
 
 ### Dispatcher Git Responsibilities
 
@@ -466,7 +446,7 @@ You manage all git integration:
 - **Create story branches** from epic branch before spawning developer
 - **Merge story→epic** after PM-Acceptor approval
 - **Resolve merge conflicts** by spawning developer if conflicts arise during story merge
-- **Create PR epic→main** after all stories are merged and epic is complete
+- **Merge epic→main** after all stories are merged and epic is complete
 - **Cleanup branches** after merge (delete story branches after merge to epic, delete
   epic branch after merge to main)
 
