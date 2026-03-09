@@ -11,17 +11,23 @@ in priority order until all work is done, blocked, or max iterations reached.
 
 ## Setup
 
-Activate the loop via pvg:
+**IMPORTANT:** `pvg loop setup` REQUIRES either `--all` or `--epic EPIC_ID`. Running it
+without these flags will fail. Do NOT attempt the bare command.
 
+If `$ARGUMENTS` is non-empty, run:
 ```bash
 pvg loop setup $ARGUMENTS
 ```
 
-If `$ARGUMENTS` is empty, ask the user:
+If `$ARGUMENTS` is empty, ask the user FIRST:
 - "Run all ready work (`--all`) or target a specific epic (provide the EPIC_ID)?"
 - "Max iterations? (default: 50, 0 for unlimited)"
 
-Verify activation succeeded before continuing.
+Then run `pvg loop setup` with the user's chosen flags. Verify activation succeeded
+before continuing.
+
+**Shell hygiene:** Do NOT append `2>&1` to nd or pvg commands. The shell tool already
+captures stderr separately. Redirecting stderr causes duplicate error display.
 
 ## Priority Order
 
