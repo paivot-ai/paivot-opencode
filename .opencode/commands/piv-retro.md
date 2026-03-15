@@ -12,13 +12,13 @@ Trigger a retrospective for a completed (or in-progress) epic.
 
 1. **Validate the epic**:
    ```bash
-   .opencode/scripts/paivot-nd.sh show $ARGUMENTS --json
+   pvg nd show $ARGUMENTS --json
    ```
    Verify it exists and is an epic.
 
 2. **Check completion status**:
    ```bash
-   .opencode/scripts/paivot-nd.sh children $ARGUMENTS --json | jq '[.[] | select(.status != "closed")] | length'
+   pvg nd children $ARGUMENTS --json | jq '[.[] | select(.status != "closed")] | length'
    ```
    If open stories remain, warn but proceed (user explicitly requested retro).
 

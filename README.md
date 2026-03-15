@@ -80,13 +80,13 @@ For multi-branch execution, the mutable nd backlog must be branch-independent.
 Use a shared nd vault resolved from the repository's git common dir rather than
 branch-local `.vault/issues/` copies.
 
-Paivot installs `.opencode/scripts/paivot-nd.sh` to make that routing structural.
+Paivot standardizes on `pvg nd` so shared-backlog routing is structural rather than remembered.
 Use it instead of bare `nd` whenever you are querying or mutating the live backlog.
 
 ### Dispatcher Pattern
 
 When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
-- Queries nd for work (`.opencode/scripts/paivot-nd.sh list --status in_progress --label delivered`, `.opencode/scripts/paivot-nd.sh ready`)
+- Queries nd for work (`pvg nd list --status in_progress --label delivered`, `pvg nd ready`)
 - Spawns specialized agents (`@paivot-developer`, `@paivot-pm`, etc.)
 - Relays questions from agents to the user
 - Never writes code, D&F documents, or stories itself
@@ -96,7 +96,7 @@ When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
 OpenCode can run these prompts with Anthropic models or top OSS coding models. The workflow is more reliable when prompts stay structural:
 
 - use exact marker blocks like `QUESTIONS_FOR_USER`, `BLT_ALIGNED`, `BLT_INCONSISTENCIES`, and `DISCOVERED_BUG`
-- use `.opencode/scripts/paivot-nd.sh` instead of relying on remembered `--vault` flags
+- use `pvg nd` instead of relying on remembered `--vault` flags
 - restate story id, phase, repo root, and expected output shape in every spawned prompt
 - treat missing workflow state as blocking instead of guessing
 
@@ -161,7 +161,7 @@ Use the smallest escape hatch that solves the problem:
 |-----------|-------------|--------------|
 | Stop unattended execution | `/piv-cancel-loop` or `pvg loop cancel` | Cancels the active loop without deleting backlog or vault data |
 | Recover after crash or context loss | `/piv-recover` or `pvg loop recover` | Cleans orphan worktrees, repairs loop state, and reports what remains |
-| Inspect live tracker state safely | `.opencode/scripts/paivot-nd.sh stats` | Reads the shared backlog instead of a branch-local copy |
+| Inspect live tracker state safely | `pvg nd stats` | Reads the shared backlog instead of a branch-local copy |
 | Remove Paivot from a project | `make uninstall TARGET=/path/to/project` | Removes `.opencode/`, `opencode.json`, and `AGENTS.md` from that project |
 
 Your nd backlog and vault notes remain on disk. Cancelling a loop, recovering state, or uninstalling the OpenCode integration does not delete your work.

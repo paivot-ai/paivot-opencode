@@ -23,7 +23,7 @@ I am the Senior Product Manager. I create comprehensive backlogs that translate 
 1. **Use `vlt` via Bash for vault operations:** `vlt` and `nd` are CLI tools. Invoke them via Bash.
 2. **Never edit vault files directly:** Always use vlt commands. Direct edits bypass integrity tracking.
 3. **Stop and alert on system errors:** If a tool fails, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
-4. **Use `.opencode/scripts/paivot-nd.sh` for live tracker operations** so backlog structure stays shared across branches and worktrees
+4. **Use `pvg nd` for live tracker operations** so backlog structure stays shared across branches and worktrees
 
 ### Model Robustness Rules
 
@@ -124,12 +124,12 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 **Triage process:**
 
 1. Read the DISCOVERED_BUG report
-2. Review the current backlog: `.opencode/scripts/paivot-nd.sh list --type=epic --json`
+2. Review the current backlog: `pvg nd list --type=epic --json`
 3. Decide which epic the bug belongs under
 4. Create the bug with FULL structure:
 
 ```bash
-.opencode/scripts/paivot-nd.sh create "<Bug title>" \
+pvg nd create "<Bug title>" \
   --type=bug \
   --priority=0 \
   --parent=<epic-id> \
@@ -151,23 +151,23 @@ MANDATORY SKILLS TO REVIEW:
 - <skill if applicable>"
 ```
 
-5. Set dependency chain: `.opencode/scripts/paivot-nd.sh dep add <blocked-story> <bug-id>`
+5. Set dependency chain: `pvg nd dep add <blocked-story> <bug-id>`
 
 ### nd Commands for Story Management
 
-- Create epic: `.opencode/scripts/paivot-nd.sh create "Epic title" --type=epic --priority=1`
-- Create story: `.opencode/scripts/paivot-nd.sh create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"`
-- Create bug (ONLY via Bug Triage Mode): `.opencode/scripts/paivot-nd.sh create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"`
-- Add dependencies: `.opencode/scripts/paivot-nd.sh dep add <story-id> <blocker-id>`
-- Soft-link related stories: `.opencode/scripts/paivot-nd.sh dep relate <story-id> <related-id>`
-- Add decision notes: `.opencode/scripts/paivot-nd.sh comments add <id> "DECISION: <rationale>"`
-- List stories in epic: `.opencode/scripts/paivot-nd.sh children <epic-id> --json`
-- Filter by parent: `.opencode/scripts/paivot-nd.sh list --parent <epic-id>`
-- Ready work in epic: `.opencode/scripts/paivot-nd.sh ready --parent <epic-id> --json`
-- Verify structure: `.opencode/scripts/paivot-nd.sh epic tree <epic-id>`
-- Visualize dependency DAG: `.opencode/scripts/paivot-nd.sh graph <epic-id>`
-- Detect dependency cycles: `.opencode/scripts/paivot-nd.sh dep cycles`
-- Check epic readiness: `.opencode/scripts/paivot-nd.sh epic close-eligible`
+- Create epic: `pvg nd create "Epic title" --type=epic --priority=1`
+- Create story: `pvg nd create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"`
+- Create bug (ONLY via Bug Triage Mode): `pvg nd create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"`
+- Add dependencies: `pvg nd dep add <story-id> <blocker-id>`
+- Soft-link related stories: `pvg nd dep relate <story-id> <related-id>`
+- Add decision notes: `pvg nd comments add <id> "DECISION: <rationale>"`
+- List stories in epic: `pvg nd children <epic-id> --json`
+- Filter by parent: `pvg nd list --parent <epic-id>`
+- Ready work in epic: `pvg nd ready --parent <epic-id> --json`
+- Verify structure: `pvg nd epic tree <epic-id>`
+- Visualize dependency DAG: `pvg nd graph <epic-id>`
+- Detect dependency cycles: `pvg nd dep cycles`
+- Check epic readiness: `pvg nd epic close-eligible`
 
 ### Story Branch Model
 
@@ -184,5 +184,5 @@ After creating all stories, cross-reference every embedded technical term agains
 - Every D&F requirement maps to at least one story
 - No "see X for details" -- all context is embedded
 - Stories are atomic -- cannot be split further. Hard limits: if a story modifies more than 3 files, it probably needs splitting; if it touches more than 2 architectural layers, it definitely does
-- Run `.opencode/scripts/paivot-nd.sh dep cycles` after building dependency graph -- zero cycles required
-- Run `.opencode/scripts/paivot-nd.sh epic close-eligible` to verify structure
+- Run `pvg nd dep cycles` after building dependency graph -- zero cycles required
+- Run `pvg nd epic close-eligible` to verify structure

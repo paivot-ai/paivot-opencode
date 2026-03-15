@@ -194,11 +194,10 @@ test: check-deps ## Run all checks
 	done
 	@echo "OK: Vault-backed agents use dynamic vlt commands"
 	@echo ""
-	@echo "Checking shared nd helper scripts exist..."
-	@test -x .opencode/scripts/resolve-nd-vault.sh || (echo "FAIL: .opencode/scripts/resolve-nd-vault.sh missing or not executable" && exit 1)
-	@test -x .opencode/scripts/paivot-nd.sh || (echo "FAIL: .opencode/scripts/paivot-nd.sh missing or not executable" && exit 1)
-	@test -x .opencode/scripts/merge-story.sh || (echo "FAIL: .opencode/scripts/merge-story.sh missing or not executable" && exit 1)
-	@echo "OK: Shared nd helper scripts present"
+	@echo "Checking pvg shared workflow commands are available..."
+	@pvg nd root --ensure >/dev/null || (echo "FAIL: pvg nd root --ensure failed" && exit 1)
+	@pvg help 2>&1 | grep -q 'story <subcommand>' || (echo "FAIL: installed pvg is missing story workflow commands" && exit 1)
+	@echo "OK: Shared pvg workflow commands available"
 	@echo ""
 	@echo "Checking all command files have name and description..."
 	@for cmd in .opencode/commands/*.md; do \
@@ -228,11 +227,11 @@ test: check-deps ## Run all checks
 	fi
 	@echo "OK: Workflow settings docs use workflow.* keys"
 	@echo ""
-	@echo "Checking operational docs use the shared nd wrapper..."
+	@echo "Checking operational docs use pvg nd..."
 	@for cmd in AGENTS.md .opencode/commands/piv-cancel-loop.md .opencode/commands/piv-init.md .opencode/commands/piv-loop.md .opencode/commands/piv-recover.md .opencode/commands/piv-retro.md .opencode/commands/piv-start.md; do \
-		grep -q '\.opencode/scripts/paivot-nd\.sh' "$$cmd" || (echo "FAIL: $$cmd does not reference the shared nd wrapper" && exit 1); \
+		grep -q 'pvg nd' "$$cmd" || (echo "FAIL: $$cmd does not reference pvg nd" && exit 1); \
 	done
-	@echo "OK: Operational docs reference the shared nd wrapper"
+	@echo "OK: Operational docs reference pvg nd"
 	@echo ""
 	@echo "Checking no bd command references..."
 	@if grep -rqP '\bbd\s+(init|list|show|sync|ready|close|update|label|search|quickstart)\b' .opencode/ AGENTS.md 2>/dev/null; then \

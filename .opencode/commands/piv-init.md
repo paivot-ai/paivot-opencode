@@ -31,9 +31,8 @@ EOF
 fi
 
 # Initialize the shared live nd vault (outside branch checkouts)
-ND_VAULT_DIR=$(.opencode/scripts/resolve-nd-vault.sh --ensure)
-export ND_VAULT_DIR
-echo "Shared nd vault: $ND_VAULT_DIR"
+SHARED_ND_VAULT=$(pvg nd root --ensure)
+echo "Shared nd vault: $SHARED_ND_VAULT"
 ```
 
 ## 2. Configure nd FSM
@@ -45,7 +44,7 @@ pvg settings \
   workflow.fsm=true \
   workflow.sequence=open,in_progress,closed \
   workflow.custom_statuses=rejected \
-  workflow.exit_rules=blocked:open,in_progress;rejected:in_progress
+  'workflow.exit_rules=blocked:open,in_progress;rejected:in_progress'
 ```
 
 This enforces:
@@ -78,7 +77,7 @@ for f in BUSINESS.md DESIGN.md ARCHITECTURE.md; do
     fi
 done
 
-ISSUE_COUNT=$(.opencode/scripts/paivot-nd.sh list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+ISSUE_COUNT=$(pvg nd list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
 
 if [ "$HAS_DOCS" -eq 0 ] && [ "$ISSUE_COUNT" -eq 0 ]; then
     echo "Empty project detected. Starting Discovery & Framing..."
@@ -95,8 +94,8 @@ If D&F should start, spawn BLT agents in sequence:
 
 ```bash
 ls -la .vault/
-.opencode/scripts/paivot-nd.sh stats
-.opencode/scripts/paivot-nd.sh config get status.fsm
+pvg nd stats
+pvg settings workflow.fsm
 ```
 
 ## 6. Report Status

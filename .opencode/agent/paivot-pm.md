@@ -23,7 +23,7 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 1. **Use `vlt` via Bash for vault operations:** `vlt` and `nd` are CLI tools. Invoke them via Bash.
 2. **Never edit vault files directly:** Always use vlt commands. Direct edits bypass integrity tracking.
 3. **Stop and alert on system errors:** If a tool fails, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
-4. **Use `.opencode/scripts/paivot-nd.sh` for live tracker operations** so PM review acts on the shared backlog, not a branch-local copy
+4. **Use `pvg nd` for live tracker operations** so PM review acts on the shared backlog, not a branch-local copy
 
 ### Model Robustness Rules
 
@@ -83,15 +83,15 @@ TODO markers are informational -- note them but they are not automatic rejection
 ### nd Commands
 
 - ACCEPT (two steps -- both mandatory):
-  1. .opencode/scripts/paivot-nd.sh labels add <id> accepted
+  1. pvg nd labels add <id> accepted
      (Dispatcher merge policy requires this label before story branches can merge. This MUST come first.)
-  2. .opencode/scripts/paivot-nd.sh close <id> --reason="Accepted: <summary>" --start=<next-id>
+  2. pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>
      (chains execution path to the next story automatically)
-- REJECT: .opencode/scripts/paivot-nd.sh update <id> --status=open
-  then: .opencode/scripts/paivot-nd.sh labels rm <id> delivered && .opencode/scripts/paivot-nd.sh labels add <id> rejected
-  then: .opencode/scripts/paivot-nd.sh comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
-- Check milestone gate: .opencode/scripts/paivot-nd.sh epic close-eligible
-- Add review notes: .opencode/scripts/paivot-nd.sh comments add <id> "..."
+- REJECT: pvg nd update <id> --status=open
+  then: pvg nd labels rm <id> delivered && pvg nd labels add <id> rejected
+  then: pvg nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+- Check milestone gate: pvg nd epic close-eligible
+- Add review notes: pvg nd comments add <id> "..."
 
 ### Reporting Discovered Bugs (CRITICAL -- Setting-Dependent)
 
@@ -107,8 +107,8 @@ Otherwise: use the **centralized model** (output block for Sr PM).
 
 PM-Acceptor creates bugs directly with mandatory guardrails:
 
-1. Get story's parent epic: `.opencode/scripts/paivot-nd.sh show <story-id> --json` (extract parent field)
-2. Check for duplicates: `.opencode/scripts/paivot-nd.sh list --label discovered-by-pm --parent <EPIC_ID>`
+1. Get story's parent epic: `pvg nd show <story-id> --json` (extract parent field)
+2. Check for duplicates: `pvg nd list --label discovered-by-pm --parent <EPIC_ID>`
    If similar bug exists, reopen it instead of creating new.
 3. Create bug:
    - Title: `Bug: <symptom>` (brief, specific)
@@ -144,17 +144,17 @@ placement, and dependency chain.
 After accepting a story, check whether ALL siblings in the parent epic are now closed:
 
 ```bash
-PARENT=$(.opencode/scripts/paivot-nd.sh show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
 
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
-  OPEN=$(.opencode/scripts/paivot-nd.sh children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
+  OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
-    .opencode/scripts/paivot-nd.sh close $PARENT --reason="All stories accepted"
+    pvg nd close $PARENT --reason="All stories accepted"
   fi
 fi
 ```
 
 ### Decisions
 
-- ACCEPT: add `accepted` label with `.opencode/scripts/paivot-nd.sh labels add <id> accepted`, then close with `.opencode/scripts/paivot-nd.sh close --reason --start` (see nd Commands above), then run Epic Auto-Close
+- ACCEPT: add `accepted` label with `pvg nd labels add <id> accepted`, then close with `pvg nd close --reason --start` (see nd Commands above), then run Epic Auto-Close
 - REJECT: return to `open`, swap `delivered` for `rejected`, and add 4-part notes (see nd Commands above)
