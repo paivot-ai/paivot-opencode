@@ -23,25 +23,23 @@ This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-
 | LLM API key | Anthropic recommended (Opus/Sonnet) | Provider-specific |
 
 Optional:
-- [Go](https://go.dev/dl/) 1.22+ -- only needed to build pvg/nd from source
+- [Go](https://go.dev/dl/) 1.24+ -- only needed if you want to build `pvg` from source instead of using its release binaries
 
 ## Quick Start
 
 ```bash
 # 1. Clone this repo
-git clone https://github.com/paivot-ai/paivot-opencode.git
+git clone https://github.com/RamXX/paivot-opencode.git
 cd paivot-opencode
 
-# 2. Verify dependencies
+# 2. Verify dependencies and install global agents/skills
 make check-deps
+make install
 
-# 3. Install the vlt skill (for vault-backed agents)
-make fetch-vlt-skill
+# 3. Install the project-local OpenCode surface
+make install-project TARGET=/path/to/your-project
 
-# 4. Copy to your project
-cp -r .opencode opencode.json AGENTS.md /path/to/your-project/
-
-# 5. Initialize in your project
+# 4. Initialize in your project
 cd /path/to/your-project
 opencode
 # Then in OpenCode:
@@ -173,15 +171,15 @@ Your nd backlog and vault notes remain on disk. Cancelling a loop, recovering st
 
 | Aspect | paivot-graph (Claude Code) | paivot-opencode |
 |--------|---------------------------|-----------------|
-| Workflow enforcement | Go hooks (PreToolUse/PostToolUse/Stop) | nd FSM + AGENTS.md instructions |
+| Workflow enforcement | Claude hooks plus shared `pvg` guard/loop commands | OpenCode commands/prompts plus the same shared `pvg` control plane |
 | Agent refs | `paivot-graph:role` | `@paivot-role` |
 | Model IDs | `opus`, `sonnet` | `anthropic/claude-opus-4-6-20250514` |
 | Config format | `plugin.json` | `opencode.json` |
 | Instructions file | `CLAUDE.md` | `AGENTS.md` |
 | Agent mode | Implicit | Explicit `mode: subagent` |
-| Loop control | `pvg hook stop` | Inline nd state checks |
+| Loop control | Claude hook lifecycle plus `pvg loop ...` | OpenCode commands plus `pvg loop ...` |
 | Git workflow | `beads-sync` trunk branch | `main` + `story/<ID>` branches |
-| Issue tracker | `nd` (with label-based delivery) | `nd` (with FSM status-based delivery) |
+| Issue tracker | `nd` via `pvg nd` shared live vault | `nd` via `pvg nd` shared live vault |
 
 ---
 
