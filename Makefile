@@ -197,6 +197,8 @@ test: check-deps ## Run all checks
 	@echo "Checking pvg shared workflow commands are available..."
 	@pvg nd root --ensure >/dev/null || (echo "FAIL: pvg nd root --ensure failed" && exit 1)
 	@pvg help 2>&1 | grep -q 'story <subcommand>' || (echo "FAIL: installed pvg is missing story workflow commands" && exit 1)
+	@pvg help 2>&1 | grep -q 'loop setup' || (echo "FAIL: installed pvg is missing loop workflow commands" && exit 1)
+	@pvg loop next --json >/dev/null || (echo "FAIL: pvg loop next --json failed" && exit 1)
 	@echo "OK: Shared pvg workflow commands available"
 	@echo ""
 	@echo "Checking all command files have name and description..."

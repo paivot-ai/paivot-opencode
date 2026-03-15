@@ -82,14 +82,11 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 ### nd Commands
 
-- ACCEPT (two steps -- both mandatory):
-  1. pvg nd labels add <id> accepted
-     (Dispatcher merge policy requires this label before story branches can merge. This MUST come first.)
-  2. pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>
-     (chains execution path to the next story automatically)
-- REJECT: pvg nd update <id> --status=open
-  then: pvg nd labels rm <id> delivered && pvg nd labels add <id> rejected
-  then: pvg nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+- ACCEPT: `pvg story accept <id> --reason "Accepted: <summary>" --next <next-id>`
+  This applies the accepted label, closes the story, and appends the accepted contract.
+- REJECT: `pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."`
+  This returns the story to `open`, swaps `delivered` for `rejected`, records the
+  structured rejection note, and appends the rejected contract.
 - Check milestone gate: pvg nd epic close-eligible
 - Add review notes: pvg nd comments add <id> "..."
 
@@ -156,5 +153,5 @@ fi
 
 ### Decisions
 
-- ACCEPT: add `accepted` label with `pvg nd labels add <id> accepted`, then close with `pvg nd close --reason --start` (see nd Commands above), then run Epic Auto-Close
-- REJECT: return to `open`, swap `delivered` for `rejected`, and add 4-part notes (see nd Commands above)
+- ACCEPT: use `pvg story accept` (see nd Commands above), then run Epic Auto-Close
+- REJECT: use `pvg story reject` with the 4-part feedback block (see nd Commands above)

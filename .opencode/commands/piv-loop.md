@@ -49,28 +49,25 @@ Each iteration, pick work in this order:
    ```
    Wait for Sr. PM to finish before continuing.
 
-1. **PM-Acceptor for delivered stories** (unblock the pipeline)
+1. **Ask `pvg` what should happen next**
    ```bash
-   pvg nd list --status in_progress --label delivered --json
+   pvg loop next --json
    ```
-   For each: spawn `@paivot-pm` agent to review and accept/reject.
-   **The PM-Acceptor closes the story itself** (`nd close --reason`). Do NOT
-   re-close stories after the PM-Acceptor finishes.
-   **After each acceptance**: the PM-Acceptor runs epic auto-close.
+   `pvg` returns one of:
+   - `decision=act` with the selected story, role, queue, scope, and hard-tdd hint
+   - `decision=wait` when only in-progress work remains
+   - `decision=complete` when the backlog is done
+   - `decision=blocked` when only blocked work remains
+   - `decision=other` when only non-dispatcher workflow states remain
 
-2. **Developer for rejected stories** (fix before starting new work)
-   ```bash
-   pvg nd list --status open --label rejected --json
-   ```
-   For each: spawn `@paivot-developer` agent to address rejection notes.
+   When `decision=act`, spawn the returned role for the returned story:
+   - `pm_acceptor` for `queue=delivered`
+   - `developer` for `queue=rejected`
+   - `developer` for `queue=ready`
 
-3. **Developer for ready stories** (new work)
-   ```bash
-   pvg nd ready --sort priority --json
-   ```
-   Pick the highest-priority item (P0 first, then P1, etc.).
-   For each: spawn `@paivot-developer` agent to implement.
-   **An empty result from this query is the ONLY signal that work is done.**
+   The returned `phase` field tells you whether a hard-tdd story should start in
+   `RED PHASE` or normal mode. Do not re-implement delivered/rejected/ready ordering
+   in prompt logic.
 
 **nd filter cheat sheet**:
 - Priority: `--priority 0` (not `--label P0`)
@@ -139,11 +136,8 @@ creating dormant tests that satisfy no testing gate.
 
 ## Developer Spawning: Normal vs Hard-TDD
 
-Hard-TDD is **opt-in per story**. Before spawning a developer, check for the `hard-tdd` label:
-
-```bash
-pvg nd show <id> --json | grep -q '"hard-tdd"'
-```
+Hard-TDD is **opt-in per story**. `pvg loop next --json` returns `hard_tdd` and `phase`
+for the selected story.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 
@@ -157,24 +151,25 @@ pvg nd show <id> --json | grep -q '"hard-tdd"'
 
 The loop runs across the ENTIRE backlog, not a single epic.
 
-Check termination after each iteration by querying nd directly:
+Check termination after each iteration by querying `pvg loop next --json`:
 
 ```bash
-# Check if any work remains
-DELIVERED=$(pvg nd list --status in_progress --label delivered --json | jq 'length')
-REJECTED=$(pvg nd list --status open --label rejected --json | jq 'length')
-READY=$(pvg nd ready --json | jq 'length')
-IN_PROGRESS=$(pvg nd list --status in_progress --json | jq 'length')
+STEP=$(pvg loop next --json)
+DECISION=$(printf '%s' "$STEP" | jq -r '.decision')
 
-if [ "$DELIVERED" -eq 0 ] && [ "$REJECTED" -eq 0 ] && [ "$READY" -eq 0 ] && [ "$IN_PROGRESS" -eq 0 ]; then
+case "$DECISION" in
+  complete)
     echo "LOOP COMPLETE: All work finished"
     pvg loop cancel
-    exit 0
-fi
-
-if [ "$DELIVERED" -eq 0 ] && [ "$REJECTED" -eq 0 ] && [ "$READY" -eq 0 ] && [ "$IN_PROGRESS" -gt 0 ]; then
-    echo "LOOP WAITING: Only in-progress work remains (agents running)"
-fi
+    ;;
+  blocked)
+    echo "LOOP BLOCKED: Only blocked work remains"
+    pvg loop cancel
+    ;;
+  wait)
+    echo "LOOP WAITING: Only in-progress work remains"
+    ;;
+esac
 ```
 
 | Condition | Action |

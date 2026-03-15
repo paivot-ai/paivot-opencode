@@ -259,26 +259,17 @@ omissions, hallucinations, and drift before they cascade downstream.
 Each iteration, pick work in this order:
 
 0. **Sr PM for bug triage** (highest -- scan agent output for `DISCOVERED_BUG:` blocks)
-1. **PM-Acceptor for delivered stories** (unblock the pipeline)
+1. **Ask `pvg` for the next deterministic action**
    ```bash
-   pvg nd list --status in_progress --label delivered --json
+   pvg loop next --json
    ```
-2. **Developer for rejected stories** (fix before starting new work)
-   ```bash
-   pvg nd list --status open --label rejected --json
-   ```
-3. **Developer for ready stories** (new work)
-   ```bash
-   pvg nd ready --sort priority --json
-   ```
+   `pvg` resolves delivered -> rejected -> ready ordering, honors active priority-epic
+   scope, and tells the dispatcher whether to act, wait, stop, or escalate.
 
 ### Developer Spawning: Normal vs Hard-TDD
 
-Hard-TDD is **opt-in per story** via the `hard-tdd` label. Check before spawning:
-
-```bash
-pvg nd show <id> --json | grep -q '"hard-tdd"'
-```
+Hard-TDD is **opt-in per story** via the `hard-tdd` label. `pvg loop next --json`
+returns `hard_tdd` and `phase` hints for the selected story.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 The developer writes both implementation and tests in a single pass.
@@ -322,16 +313,13 @@ The loop runs across the ENTIRE backlog, not a single epic. It stops when:
 ```bash
 pvg nd update <id> --status=in_progress          # Claim story
 pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb
-pvg nd labels add <id> delivered                  # Mark delivered for PM review
+pvg story deliver <id>                           # Mark delivered structurally after delivery notes are written
 ```
 
 **Story review (PM-Acceptor):**
 ```bash
-pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>  # Accept
-pvg nd update <id> --status=open                  # Reject (step 1)
-pvg nd labels rm <id> delivered                   # Reject (step 2)
-pvg nd labels add <id> rejected                   # Reject (step 3)
-pvg nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."  # Rejection notes
+pvg story accept <id> --reason "Accepted: <summary>" --next <next-id>  # Accept
+pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."  # Reject
 ```
 
 **Backlog management (Sr PM):**

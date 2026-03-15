@@ -7,6 +7,9 @@ description: Cancel active execution loop and report backlog state
 
 Cancel the active piv-loop execution loop and report backlog state.
 
+All live backlog reads must still go through `pvg nd ...` or higher-level `pvg loop ...`
+commands so the dispatcher stays on the shared vault.
+
 ## Steps
 
 1. Cancel the loop:
@@ -16,14 +19,10 @@ Cancel the active piv-loop execution loop and report backlog state.
 
 2. Report current backlog state:
    ```bash
-   pvg nd ready --json | jq length
-   pvg nd list --status in_progress --json | jq length
-   pvg nd list --status in_progress --label delivered --json | jq length
-   pvg nd list --status open --label rejected --json | jq length
-   pvg nd blocked --json | jq length
+   pvg loop next --json
    ```
 
 3. Summarize:
    - How many iterations completed
-   - Stories still ready / in-progress / delivered / rejected / blocked
-   - Suggest next action (resume later with `/piv-loop`, or manual triage)
+   - Counts from `pvg loop next` (ready / in-progress / delivered / rejected / blocked / other)
+   - Suggested next action from `pvg loop next` (resume later with `/piv-loop`, or manual triage)

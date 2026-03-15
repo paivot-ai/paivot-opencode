@@ -31,18 +31,11 @@ Recover from a crash, context compaction, or inconsistent state.
 
 3. **Check current state**:
    ```bash
-   pvg nd list --status in_progress --json
-   pvg nd list --status in_progress --label delivered --json
-   pvg nd list --status open --label rejected --json
-   pvg nd ready --json | jq length
-   pvg nd blocked --json | jq length
+   pvg loop next --json
    ```
 
 4. **Report recovery summary**:
    - What was cleaned up (orphan worktrees, reset stories)
-   - Current backlog state (ready, in-progress, delivered, rejected, blocked)
+   - Current backlog state from `pvg loop next` (ready, in-progress, delivered, rejected, blocked, other)
    - Any issues found by `nd doctor`
-   - Recommended next action:
-     - If ready work exists: "Run `/piv-loop` to resume execution"
-     - If delivered work exists: "Run `/piv-start` to process delivered stories"
-     - If everything is blocked: "Manual intervention needed -- check blocked stories"
+   - Recommended next action from `pvg loop next`

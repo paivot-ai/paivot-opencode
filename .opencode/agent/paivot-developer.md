@@ -55,7 +55,7 @@ When neither phase is specified: normal mode (write both tests and code).
 6. Run CI locally, capture output
 7. **Self-check: scan your changed files for stubs and incomplete implementation** (see Pre-Delivery Self-Check below)
 8. Commit to story branch (story/<ID>, merged to main after PM acceptance)
-9. Mark delivered: `pvg nd labels add <id> delivered`
+9. After writing delivery notes, run `pvg story deliver <id>`
 10. Deliver with comprehensive proof: CI results, coverage, AC verification table, self-check results
 
 ### Pre-Delivery Self-Check (MANDATORY)
@@ -76,7 +76,7 @@ everyone's tokens.
 - Claim the story: `pvg nd update <id> --status=in_progress`
 - Breadcrumb notes (compaction-safe): `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."`
 - Structured progress notes: `pvg nd comments add <id> "..."`
-- Mark delivered: `pvg nd labels add <id> delivered` (YOU must do this, not the orchestrator)
+- Mark delivered: `pvg story deliver <id>` (YOU must do this after appending delivery proof; it updates status/labels/contracts structurally)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)
 

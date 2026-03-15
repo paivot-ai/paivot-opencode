@@ -86,9 +86,10 @@ Use it instead of bare `nd` whenever you are querying or mutating the live backl
 ### Dispatcher Pattern
 
 When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
-- Queries nd for work (`pvg nd list --status in_progress --label delivered`, `pvg nd ready`)
+- Asks `pvg` what should happen next (`pvg loop next --json`)
 - Spawns specialized agents (`@paivot-developer`, `@paivot-pm`, etc.)
 - Relays questions from agents to the user
+- Uses `pvg story deliver|accept|reject` for tracker transitions instead of hand-managed label churn
 - Never writes code, D&F documents, or stories itself
 
 ### Model Portability

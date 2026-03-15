@@ -6,45 +6,31 @@ arguments: "[STORY_ID]"
 
 # piv-start -- Single Execution Pass
 
-Run a single pass of the execution loop. Find the highest-priority ready work and dispatch
-one developer agent to implement it.
+Run a single pass of the execution loop using `pvg` as the source of truth for queue
+ordering.
+
+Any direct tracker reads inside this flow must still use `pvg nd ...` so OpenCode never
+falls back to a branch-local backlog by accident.
 
 ## Steps
 
-1. **Check for delivered work first** (PM-Acceptor has priority):
-   ```bash
-   pvg nd list --status in_progress --label delivered --json
-   ```
-   If any stories are delivered, spawn `@paivot-pm` to review the first one.
-
-2. **Check for rejected work** (fix before new work):
-   ```bash
-   pvg nd list --status open --label rejected --json
-   ```
-   If any stories are rejected, spawn `@paivot-developer` to address the first one.
-
-3. **Find ready work**:
+1. **Resolve the next action**:
    If `$ARGUMENTS` specifies a STORY_ID, use that story directly.
    Otherwise:
    ```bash
-   pvg nd ready --sort priority --json
+   pvg loop next --json
    ```
-   Pick the highest-priority item.
+   Respect the returned `decision`, `role`, `story_id`, `queue`, `hard_tdd`, and `phase`.
 
-4. **Check for hard-tdd**:
-   ```bash
-   pvg nd show <id> --json | grep -q '"hard-tdd"'
-   ```
-   If present, use two-phase flow (RED then GREEN). Otherwise, normal mode.
+2. **Spawn the returned agent**:
+   - `pm_acceptor` -> spawn `@paivot-pm`
+   - `developer` -> spawn `@paivot-developer`
+   - for hard-tdd with `phase=red`, use the RED/GREEN flow
 
-5. **Spawn developer**:
-   Spawn `@paivot-developer` with the story context.
-   Wait for completion.
-
-6. **After developer finishes**:
+3. **After the agent finishes**:
    - Scan output for `DISCOVERED_BUG:` blocks. If found, spawn `@paivot-sr-pm` for bug triage.
-   - The story should now be `in_progress` with the `delivered` label.
-   - Spawn `@paivot-pm` to review the delivered story.
+   - If the developer delivered work, the story should now be `in_progress` with the `delivered` label because `pvg story deliver` handled the transition structurally.
+   - If the next action was PM review, let `pvg story accept` / `pvg story reject` own the transition.
 
-7. **Report**:
+4. **Report**:
    Summarize what happened and suggest next action.
