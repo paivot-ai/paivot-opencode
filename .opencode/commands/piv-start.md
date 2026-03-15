@@ -13,13 +13,13 @@ one developer agent to implement it.
 
 1. **Check for delivered work first** (PM-Acceptor has priority):
    ```bash
-   nd list --status in_progress --label delivered --json
+   .opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json
    ```
    If any stories are delivered, spawn `@paivot-pm` to review the first one.
 
 2. **Check for rejected work** (fix before new work):
    ```bash
-   nd list --status open --label rejected --json
+   .opencode/scripts/paivot-nd.sh list --status open --label rejected --json
    ```
    If any stories are rejected, spawn `@paivot-developer` to address the first one.
 
@@ -27,13 +27,13 @@ one developer agent to implement it.
    If `$ARGUMENTS` specifies a STORY_ID, use that story directly.
    Otherwise:
    ```bash
-   nd ready --sort priority --json
+   .opencode/scripts/paivot-nd.sh ready --sort priority --json
    ```
    Pick the highest-priority item.
 
 4. **Check for hard-tdd**:
    ```bash
-   nd show <id> --json | grep -q '"hard-tdd"'
+   .opencode/scripts/paivot-nd.sh show <id> --json | grep -q '"hard-tdd"'
    ```
    If present, use two-phase flow (RED then GREEN). Otherwise, normal mode.
 

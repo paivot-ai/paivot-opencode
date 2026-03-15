@@ -12,7 +12,7 @@ Capture knowledge from the current session to the appropriate vault. Auto-derive
 Load the vault-knowledge skill to understand the controlled domain vocabulary and note template:
 
 ```bash
-cat ~/workspace/paivot/paivot-graph/skills/vault-knowledge/SKILL.md | head -100
+cat .opencode/skills/vault-knowledge/SKILL.md | head -100
 ```
 
 Detect the current project:

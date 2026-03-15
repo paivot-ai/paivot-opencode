@@ -21,10 +21,10 @@ OpenCode does not have Claude Code's hook system. nd therefore enforces the **ba
 Base FSM configuration (done by `/piv-init` via `pvg settings`):
 
 ```yaml
-status.custom: "rejected"
-status.sequence: "open,in_progress,closed"
-status.exit_rules: "blocked:open,in_progress;rejected:in_progress"
-status.fsm: true
+workflow.custom_statuses: "rejected"
+workflow.sequence: "open,in_progress,closed"
+workflow.exit_rules: "blocked:open,in_progress;rejected:in_progress"
+workflow.fsm: true
 ```
 
 ### Paivot Contract Mapping
@@ -39,14 +39,33 @@ status.fsm: true
 
 Base transitions are structural in nd. Delivery, acceptance, rejection, and merge eligibility are enforced by dispatcher policy in OpenCode.
 
+## Live Source Of Record
+
+For nd-backed execution, the live backlog must be branch-independent.
+
+- Resolve the live nd vault from the repository's git common dir
+- Use `.opencode/scripts/paivot-nd.sh ...` for live tracker operations
+- Do not treat branch-local `.vault/issues/` as canonical state when multiple worktrees or branches are active
+- Use explicit archives or exports if you want a git artifact of the backlog
+
 ### Dispatcher Queries
 
 ```bash
-nd list --status in_progress --label delivered --json  # Find work for PM-Acceptor
-nd list --status open --label rejected --json          # Find rejected work for Developer
-nd ready --sort priority --json                        # Find new work for Developer
-nd list --status in_progress --json                    # Check active work
+.opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json  # Find work for PM-Acceptor
+.opencode/scripts/paivot-nd.sh list --status open --label rejected --json          # Find rejected work for Developer
+.opencode/scripts/paivot-nd.sh ready --sort priority --json                        # Find new work for Developer
+.opencode/scripts/paivot-nd.sh list --status in_progress --json                    # Check active work
 ```
+
+## Model Portability Rules
+
+OpenCode can run Paivot with Anthropic models or strong OSS coding models. To keep the workflow reliable across model families:
+
+- Use the exact marker blocks defined here: `QUESTIONS_FOR_USER`, `BLT_ALIGNED`, `BLT_INCONSISTENCIES`, and `DISCOVERED_BUG`.
+- Prefer `.opencode/scripts/paivot-nd.sh` over raw `nd` so live-tracker routing is structural, not remembered.
+- When spawning an agent, restate the role, story/epic id, phase (`RED PHASE` / `GREEN PHASE`), repo root, and the required output shape in the prompt.
+- Treat missing context as blocking. Do not infer hidden branch, vault, or workflow state.
+- Prefer short, imperative instructions and copy-paste command blocks over prose that relies on subtle interpretation.
 
 ## Dispatcher Mode
 
@@ -242,15 +261,15 @@ Each iteration, pick work in this order:
 0. **Sr PM for bug triage** (highest -- scan agent output for `DISCOVERED_BUG:` blocks)
 1. **PM-Acceptor for delivered stories** (unblock the pipeline)
    ```bash
-   nd list --status in_progress --label delivered --json
+   .opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json
    ```
 2. **Developer for rejected stories** (fix before starting new work)
    ```bash
-   nd list --status open --label rejected --json
+   .opencode/scripts/paivot-nd.sh list --status open --label rejected --json
    ```
 3. **Developer for ready stories** (new work)
    ```bash
-   nd ready --sort priority --json
+   .opencode/scripts/paivot-nd.sh ready --sort priority --json
    ```
 
 ### Developer Spawning: Normal vs Hard-TDD
@@ -258,7 +277,7 @@ Each iteration, pick work in this order:
 Hard-TDD is **opt-in per story** via the `hard-tdd` label. Check before spawning:
 
 ```bash
-nd show <id> --json | grep -q '"hard-tdd"'
+.opencode/scripts/paivot-nd.sh show <id> --json | grep -q '"hard-tdd"'
 ```
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
@@ -301,40 +320,42 @@ The loop runs across the ENTIRE backlog, not a single epic. It stops when:
 
 **Story lifecycle (Developer):**
 ```bash
-nd update <id> --status=in_progress          # Claim story
-nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb
-nd labels add <id> delivered                  # Mark delivered for PM review
+.opencode/scripts/paivot-nd.sh update <id> --status=in_progress          # Claim story
+.opencode/scripts/paivot-nd.sh update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb
+.opencode/scripts/paivot-nd.sh labels add <id> delivered                  # Mark delivered for PM review
 ```
 
 **Story review (PM-Acceptor):**
 ```bash
-nd close <id> --reason="Accepted: <summary>" --start=<next-id>  # Accept
-nd update <id> --status=open                  # Reject (step 1)
-nd labels rm <id> delivered                   # Reject (step 2)
-nd labels add <id> rejected                   # Reject (step 3)
-nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."  # Rejection notes
+.opencode/scripts/paivot-nd.sh close <id> --reason="Accepted: <summary>" --start=<next-id>  # Accept
+.opencode/scripts/paivot-nd.sh update <id> --status=open                  # Reject (step 1)
+.opencode/scripts/paivot-nd.sh labels rm <id> delivered                   # Reject (step 2)
+.opencode/scripts/paivot-nd.sh labels add <id> rejected                   # Reject (step 3)
+.opencode/scripts/paivot-nd.sh comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."  # Rejection notes
 ```
 
 **Backlog management (Sr PM):**
 ```bash
-nd create "Title" --type=epic --priority=1    # Create epic
-nd create "Title" --type=task --priority=<P> --parent=<epic-id> -d "description"  # Create story
-nd create "Title" --type=bug --priority=0 --parent=<epic-id> -d "description"  # Create bug
-nd dep add <story-id> <blocker-id>            # Add dependency
-nd dep relate <story-id> <related-id>         # Soft-link
-nd children <epic-id> --json                  # List stories in epic
-nd dep cycles                                 # Detect dependency cycles
-nd epic close-eligible                        # Check epic readiness
+.opencode/scripts/paivot-nd.sh create "Title" --type=epic --priority=1    # Create epic
+.opencode/scripts/paivot-nd.sh create "Title" --type=task --priority=<P> --parent=<epic-id> -d "description"  # Create story
+.opencode/scripts/paivot-nd.sh create "Title" --type=bug --priority=0 --parent=<epic-id> -d "description"  # Create bug
+.opencode/scripts/paivot-nd.sh dep add <story-id> <blocker-id>            # Add dependency
+.opencode/scripts/paivot-nd.sh dep relate <story-id> <related-id>         # Soft-link
+.opencode/scripts/paivot-nd.sh children <epic-id> --json                  # List stories in epic
+.opencode/scripts/paivot-nd.sh dep cycles                                 # Detect dependency cycles
+.opencode/scripts/paivot-nd.sh epic close-eligible                        # Check epic readiness
 ```
 
 **Diagnostics:**
 ```bash
-nd graph / nd graph <epic-id>                 # Dependency DAG
-nd dep tree <id>                              # Dependency tree
-nd path / nd path <id>                        # Execution path
-nd doctor                                     # Health check
-nd stale --days=14                            # Neglected issues
-nd stats                                      # Backlog statistics
+.opencode/scripts/paivot-nd.sh graph                                            # Dependency DAG (entire backlog)
+.opencode/scripts/paivot-nd.sh graph <epic-id>                                  # Dependency DAG (one epic)
+.opencode/scripts/paivot-nd.sh dep tree <id>                              # Dependency tree
+.opencode/scripts/paivot-nd.sh path                                             # Execution path (entire backlog)
+.opencode/scripts/paivot-nd.sh path <id>                                         # Execution path (one item)
+.opencode/scripts/paivot-nd.sh doctor                                     # Health check
+.opencode/scripts/paivot-nd.sh stale --days=14                            # Neglected issues
+.opencode/scripts/paivot-nd.sh stats                                      # Backlog statistics
 ```
 
 ## Git Workflow: Trunk-Based Story Branches
@@ -371,12 +392,7 @@ Before merging, verify the Paivot contract:
 Then merge:
 
 ```bash
-git fetch origin
-git checkout main
-git pull origin main
-git merge --no-ff origin/story/<STORY-ID> -m "merge(story/<STORY-ID>): integrate"
-git push origin main
-git push origin --delete story/<STORY-ID>
+.opencode/scripts/merge-story.sh <STORY-ID>
 ```
 
 If a merge conflict occurs, spawn a developer to resolve it.
@@ -386,9 +402,10 @@ If a merge conflict occurs, spawn a developer to resolve it.
 You manage all git integration:
 
 - create story branches from `main`
-- merge accepted story branches to `main`
+- merge accepted story branches to `main` via `.opencode/scripts/merge-story.sh`
 - resolve merge conflicts by spawning a developer
 - clean up merged story branches
+- keep nd state in the shared live vault so all worktrees see the same queue
 
 ## Agent Operating Rules (apply to ALL agents)
 

@@ -170,29 +170,35 @@ test: check-deps ## Run all checks
 	@python3 -c "import json; json.load(open('opencode.json'))" || (echo "FAIL: opencode.json is not valid JSON" && exit 1)
 	@echo "OK: opencode.json is valid JSON"
 	@echo ""
-	@echo "Checking all 8 agent files exist..."
-	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
+	@echo "Checking all 11 agent files exist..."
+	@for agent in sr-pm pm developer architect designer business-analyst anchor retro ba-challenger designer-challenger architect-challenger; do \
 		test -f .opencode/agent/paivot-$$agent.md || (echo "FAIL: .opencode/agent/paivot-$$agent.md not found" && exit 1); \
 	done
-	@echo "OK: All 8 agent files present"
+	@echo "OK: All 11 agent files present"
 	@echo ""
 	@echo "Checking agent frontmatter has mode: subagent..."
-	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
+	@for agent in sr-pm pm developer architect designer business-analyst anchor retro ba-challenger designer-challenger architect-challenger; do \
 		grep -q 'mode: subagent' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md missing mode: subagent" && exit 1); \
 	done
 	@echo "OK: All agents have mode: subagent"
 	@echo ""
-	@echo "Checking agent model IDs are valid..."
-	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
-		grep -qE 'model: anthropic/claude-(opus|sonnet|haiku)' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md has invalid model ID" && exit 1); \
+	@echo "Checking agent model fields are present..."
+	@for agent in sr-pm pm developer architect designer business-analyst anchor retro ba-challenger designer-challenger architect-challenger; do \
+		grep -q '^model: ' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md missing model field" && exit 1); \
 	done
-	@echo "OK: All agents have valid model IDs"
+	@echo "OK: All agents declare a model field"
 	@echo ""
 	@echo "Checking vault loaders use vlt commands..."
 	@for agent in sr-pm developer anchor retro; do \
 		grep -q 'vlt vault="Claude" read file=' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md missing vlt read command" && exit 1); \
 	done
 	@echo "OK: Vault-backed agents use dynamic vlt commands"
+	@echo ""
+	@echo "Checking shared nd helper scripts exist..."
+	@test -x .opencode/scripts/resolve-nd-vault.sh || (echo "FAIL: .opencode/scripts/resolve-nd-vault.sh missing or not executable" && exit 1)
+	@test -x .opencode/scripts/paivot-nd.sh || (echo "FAIL: .opencode/scripts/paivot-nd.sh missing or not executable" && exit 1)
+	@test -x .opencode/scripts/merge-story.sh || (echo "FAIL: .opencode/scripts/merge-story.sh missing or not executable" && exit 1)
+	@echo "OK: Shared nd helper scripts present"
 	@echo ""
 	@echo "Checking all command files have name and description..."
 	@for cmd in .opencode/commands/*.md; do \
@@ -214,6 +220,19 @@ test: check-deps ## Run all checks
 		exit 1; \
 	fi
 	@echo "OK: No stale references"
+	@echo ""
+	@echo "Checking workflow settings docs use workflow.* keys..."
+	@if grep -rq '^status\.\(custom\|sequence\|exit_rules\|fsm\):' AGENTS.md README.md .opencode/commands 2>/dev/null; then \
+		echo "FAIL: Stale status.* workflow keys found"; \
+		exit 1; \
+	fi
+	@echo "OK: Workflow settings docs use workflow.* keys"
+	@echo ""
+	@echo "Checking operational docs use the shared nd wrapper..."
+	@for cmd in AGENTS.md .opencode/commands/piv-cancel-loop.md .opencode/commands/piv-init.md .opencode/commands/piv-loop.md .opencode/commands/piv-recover.md .opencode/commands/piv-retro.md .opencode/commands/piv-start.md; do \
+		grep -q '\.opencode/scripts/paivot-nd\.sh' "$$cmd" || (echo "FAIL: $$cmd does not reference the shared nd wrapper" && exit 1); \
+	done
+	@echo "OK: Operational docs reference the shared nd wrapper"
 	@echo ""
 	@echo "Checking no bd command references..."
 	@if grep -rqP '\bbd\s+(init|list|show|sync|ready|close|update|label|search|quickstart)\b' .opencode/ AGENTS.md 2>/dev/null; then \

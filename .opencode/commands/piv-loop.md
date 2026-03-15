@@ -29,6 +29,12 @@ before continuing.
 **Shell hygiene:** Do NOT append `2>&1` to nd or pvg commands. The shell tool already
 captures stderr separately. Redirecting stderr causes duplicate error display.
 
+All tracker operations below must use the shared live nd wrapper:
+
+```bash
+.opencode/scripts/paivot-nd.sh <command>
+```
+
 ## Priority Order
 
 Each iteration, pick work in this order:
@@ -45,7 +51,7 @@ Each iteration, pick work in this order:
 
 1. **PM-Acceptor for delivered stories** (unblock the pipeline)
    ```bash
-   nd list --status in_progress --label delivered --json
+   .opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json
    ```
    For each: spawn `@paivot-pm` agent to review and accept/reject.
    **The PM-Acceptor closes the story itself** (`nd close --reason`). Do NOT
@@ -54,13 +60,13 @@ Each iteration, pick work in this order:
 
 2. **Developer for rejected stories** (fix before starting new work)
    ```bash
-   nd list --status open --label rejected --json
+   .opencode/scripts/paivot-nd.sh list --status open --label rejected --json
    ```
    For each: spawn `@paivot-developer` agent to address rejection notes.
 
 3. **Developer for ready stories** (new work)
    ```bash
-   nd ready --sort priority --json
+   .opencode/scripts/paivot-nd.sh ready --sort priority --json
    ```
    Pick the highest-priority item (P0 first, then P1, etc.).
    For each: spawn `@paivot-developer` agent to implement.
@@ -136,7 +142,7 @@ creating dormant tests that satisfy no testing gate.
 Hard-TDD is **opt-in per story**. Before spawning a developer, check for the `hard-tdd` label:
 
 ```bash
-nd show <id> --json | grep -q '"hard-tdd"'
+.opencode/scripts/paivot-nd.sh show <id> --json | grep -q '"hard-tdd"'
 ```
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
@@ -155,10 +161,10 @@ Check termination after each iteration by querying nd directly:
 
 ```bash
 # Check if any work remains
-DELIVERED=$(nd list --status in_progress --label delivered --json | jq 'length')
-REJECTED=$(nd list --status open --label rejected --json | jq 'length')
-READY=$(nd ready --json | jq 'length')
-IN_PROGRESS=$(nd list --status in_progress --json | jq 'length')
+DELIVERED=$(.opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json | jq 'length')
+REJECTED=$(.opencode/scripts/paivot-nd.sh list --status open --label rejected --json | jq 'length')
+READY=$(.opencode/scripts/paivot-nd.sh ready --json | jq 'length')
+IN_PROGRESS=$(.opencode/scripts/paivot-nd.sh list --status in_progress --json | jq 'length')
 
 if [ "$DELIVERED" -eq 0 ] && [ "$REJECTED" -eq 0 ] && [ "$READY" -eq 0 ] && [ "$IN_PROGRESS" -eq 0 ]; then
     echo "LOOP COMPLETE: All work finished"

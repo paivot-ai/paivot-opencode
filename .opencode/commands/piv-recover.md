@@ -21,7 +21,7 @@ Recover from a crash, context compaction, or inconsistent state.
 
 2. **Run nd health check**:
    ```bash
-   nd doctor
+   .opencode/scripts/paivot-nd.sh doctor
    ```
    This checks for:
    - Broken file references
@@ -31,11 +31,11 @@ Recover from a crash, context compaction, or inconsistent state.
 
 3. **Check current state**:
    ```bash
-   nd list --status in_progress --json
-   nd list --status in_progress --label delivered --json
-   nd list --status open --label rejected --json
-   nd ready --json | jq length
-   nd blocked --json | jq length
+   .opencode/scripts/paivot-nd.sh list --status in_progress --json
+   .opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json
+   .opencode/scripts/paivot-nd.sh list --status open --label rejected --json
+   .opencode/scripts/paivot-nd.sh ready --json | jq length
+   .opencode/scripts/paivot-nd.sh blocked --json | jq length
    ```
 
 4. **Report recovery summary**:

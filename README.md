@@ -68,21 +68,37 @@ open --> in_progress --> delivered --> closed
 Configuration (set by `/piv-init` through `pvg settings`):
 
 ```yaml
-status.custom: "rejected"
-status.sequence: "open,in_progress,closed"
-status.exit_rules: "blocked:open,in_progress;rejected:in_progress"
-status.fsm: true
+workflow.custom_statuses: "rejected"
+workflow.sequence: "open,in_progress,closed"
+workflow.exit_rules: "blocked:open,in_progress;rejected:in_progress"
+workflow.fsm: true
 ```
 
 nd rejects invalid base transitions at the CLI level. A developer cannot close a story directly, and a PM cannot close a story that has not progressed through `in_progress`. Delivery markers such as `delivered`, `accepted`, and `rejected` are still part of the Paivot contract and are enforced by dispatcher policy in OpenCode.
 
+For multi-branch execution, the mutable nd backlog must be branch-independent.
+Use a shared nd vault resolved from the repository's git common dir rather than
+branch-local `.vault/issues/` copies.
+
+Paivot installs `.opencode/scripts/paivot-nd.sh` to make that routing structural.
+Use it instead of bare `nd` whenever you are querying or mutating the live backlog.
+
 ### Dispatcher Pattern
 
 When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
-- Queries nd for work (`nd list --status in_progress --label delivered`, `nd ready`)
+- Queries nd for work (`.opencode/scripts/paivot-nd.sh list --status in_progress --label delivered`, `.opencode/scripts/paivot-nd.sh ready`)
 - Spawns specialized agents (`@paivot-developer`, `@paivot-pm`, etc.)
 - Relays questions from agents to the user
 - Never writes code, D&F documents, or stories itself
+
+### Model Portability
+
+OpenCode can run these prompts with Anthropic models or top OSS coding models. The workflow is more reliable when prompts stay structural:
+
+- use exact marker blocks like `QUESTIONS_FOR_USER`, `BLT_ALIGNED`, `BLT_INCONSISTENCIES`, and `DISCOVERED_BUG`
+- use `.opencode/scripts/paivot-nd.sh` instead of relying on remembered `--vault` flags
+- restate story id, phase, repo root, and expected output shape in every spawned prompt
+- treat missing workflow state as blocking instead of guessing
 
 ### Three-Tier Knowledge Model
 
@@ -134,6 +150,21 @@ If the vault is unavailable, each agent has embedded fallback instructions. This
 | `/vault-capture` | Knowledge capture pass |
 | `/vault-triage` | Review pending vault proposals |
 | `/vault-settings` | Project settings management |
+
+---
+
+## If Something Goes Wrong
+
+Use the smallest escape hatch that solves the problem:
+
+| Situation | What to run | What it does |
+|-----------|-------------|--------------|
+| Stop unattended execution | `/piv-cancel-loop` or `pvg loop cancel` | Cancels the active loop without deleting backlog or vault data |
+| Recover after crash or context loss | `/piv-recover` or `pvg loop recover` | Cleans orphan worktrees, repairs loop state, and reports what remains |
+| Inspect live tracker state safely | `.opencode/scripts/paivot-nd.sh stats` | Reads the shared backlog instead of a branch-local copy |
+| Remove Paivot from a project | `make uninstall TARGET=/path/to/project` | Removes `.opencode/`, `opencode.json`, and `AGENTS.md` from that project |
+
+Your nd backlog and vault notes remain on disk. Cancelling a loop, recovering state, or uninstalling the OpenCode integration does not delete your work.
 
 ---
 

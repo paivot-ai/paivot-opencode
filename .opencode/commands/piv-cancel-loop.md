@@ -16,11 +16,11 @@ Cancel the active piv-loop execution loop and report backlog state.
 
 2. Report current backlog state:
    ```bash
-   nd ready --json | jq length
-   nd list --status in_progress --json | jq length
-   nd list --status in_progress --label delivered --json | jq length
-   nd list --status open --label rejected --json | jq length
-   nd blocked --json | jq length
+   .opencode/scripts/paivot-nd.sh ready --json | jq length
+   .opencode/scripts/paivot-nd.sh list --status in_progress --json | jq length
+   .opencode/scripts/paivot-nd.sh list --status in_progress --label delivered --json | jq length
+   .opencode/scripts/paivot-nd.sh list --status open --label rejected --json | jq length
+   .opencode/scripts/paivot-nd.sh blocked --json | jq length
    ```
 
 3. Summarize:

@@ -18,12 +18,22 @@ else
     git init
 fi
 
-# Check if nd exists
-if [ -f .vault/.nd.yaml ]; then
-    echo "nd already initialized - skipping"
-else
-    nd init
+# Ensure Paivot runtime directories exist
+mkdir -p .vault .vault/knowledge/{decisions,patterns,debug,conventions}
+
+# Track the shared nd resolver config in the repo
+if [ ! -f .vault/.nd-shared.yaml ]; then
+cat > .vault/.nd-shared.yaml <<'EOF'
+# nd shared-worktree state
+mode: git_common_dir
+path: paivot/nd-vault
+EOF
 fi
+
+# Initialize the shared live nd vault (outside branch checkouts)
+ND_VAULT_DIR=$(.opencode/scripts/resolve-nd-vault.sh --ensure)
+export ND_VAULT_DIR
+echo "Shared nd vault: $ND_VAULT_DIR"
 ```
 
 ## 2. Configure nd FSM
@@ -52,7 +62,7 @@ Paivot delivery semantics still use the shared contract:
 ## 3. Create Project Structure
 
 ```bash
-mkdir -p docs .vault/knowledge/{decisions,patterns,debug,conventions}
+mkdir -p docs
 ```
 
 ## 4. Auto-Start D&F (Empty Projects Only)
@@ -68,7 +78,7 @@ for f in BUSINESS.md DESIGN.md ARCHITECTURE.md; do
     fi
 done
 
-ISSUE_COUNT=$(nd list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+ISSUE_COUNT=$(.opencode/scripts/paivot-nd.sh list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
 
 if [ "$HAS_DOCS" -eq 0 ] && [ "$ISSUE_COUNT" -eq 0 ]; then
     echo "Empty project detected. Starting Discovery & Framing..."
@@ -85,8 +95,8 @@ If D&F should start, spawn BLT agents in sequence:
 
 ```bash
 ls -la .vault/
-nd stats
-nd config get status.fsm
+.opencode/scripts/paivot-nd.sh stats
+.opencode/scripts/paivot-nd.sh config get status.fsm
 ```
 
 ## 6. Report Status
