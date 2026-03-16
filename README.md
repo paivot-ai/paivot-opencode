@@ -17,9 +17,9 @@ This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-
 | Tool | Purpose | Install |
 |------|---------|---------|
 | [OpenCode](https://www.opencode.ai/) | AI coding agent framework | [docs.opencode.ai](https://docs.opencode.ai/installation) |
-| [nd](https://github.com/RamXX/nd) | Git-native issue tracker with FSM | `git clone && make install` |
+| [nd](https://github.com/paivot-ai/nd) | Git-native issue tracker with FSM | `git clone && make install` |
 | [pvg](https://github.com/paivot-ai/pvg) | Loop lifecycle and guard CLI | `gh release download -R paivot-ai/pvg` |
-| [vlt](https://github.com/RamXX/vlt) | Vault CLI for knowledge management | `git clone && make install` |
+| [vlt](https://github.com/paivot-ai/vlt) | Vault CLI for knowledge management | `git clone && make install` |
 | LLM API key | Anthropic recommended (Opus/Sonnet) | Provider-specific |
 
 Optional:
@@ -29,7 +29,7 @@ Optional:
 
 ```bash
 # 1. Clone this repo
-git clone https://github.com/RamXX/paivot-opencode.git
+git clone https://github.com/paivot-ai/paivot-opencode.git
 cd paivot-opencode
 
 # 2. Verify dependencies and install global agents/skills

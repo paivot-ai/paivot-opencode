@@ -33,13 +33,13 @@ check-deps: ## Verify required dependencies are installed
 	@command -v pvg >/dev/null 2>&1 && echo "OK: pvg $$(pvg version 2>&1)" || true
 	@command -v vlt >/dev/null 2>&1 || \
 		(echo "ERROR: vlt is not installed." && \
-		 echo "       Install from https://github.com/RamXX/vlt" && \
-		 echo "       git clone https://github.com/RamXX/vlt.git && cd vlt && make install" && \
+		 echo "       Install from https://github.com/paivot-ai/vlt" && \
+		 echo "       git clone https://github.com/paivot-ai/vlt.git && cd vlt && make install" && \
 		 exit 1)
 	@echo "OK: vlt $$(vlt version 2>&1)"
 	@command -v nd >/dev/null 2>&1 && \
 		echo "OK: nd found at $$(command -v nd)" || \
-		echo "WARN: nd not installed (needed for execution agents -- install from https://github.com/RamXX/nd)"
+		echo "WARN: nd not installed (needed for execution agents -- install from https://github.com/paivot-ai/nd)"
 	@command -v opencode >/dev/null 2>&1 || \
 		(echo "ERROR: opencode is not installed." && exit 1)
 	@echo "OK: opencode found"

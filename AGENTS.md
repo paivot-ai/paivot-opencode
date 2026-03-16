@@ -10,9 +10,9 @@ Paivot uses three CLI tools. All must be on PATH.
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| `nd` | Git-native issue tracker (stories, epics, bugs, dependencies) | `https://github.com/RamXX/nd` |
+| `nd` | Git-native issue tracker (stories, epics, bugs, dependencies) | `https://github.com/paivot-ai/nd` |
 | `pvg` | Loop lifecycle, crash recovery, vault seeding | `https://github.com/paivot-ai/pvg` |
-| `vlt` | Obsidian vault CLI (knowledge layer) | `https://github.com/RamXX/vlt` |
+| `vlt` | Obsidian vault CLI (knowledge layer) | `https://github.com/paivot-ai/vlt` |
 
 ## nd Contract + Base FSM
 
