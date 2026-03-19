@@ -100,15 +100,35 @@ This forces interface thinking before implementation. When a downstream story is
 its CONSUMES section is verified against the upstream story's PRODUCES section. No more
 silent assumptions about what exists. Contracts are explicit and checked by the Anchor.
 
+### E2e Capstone Story (MANDATORY per epic)
+
+Every epic MUST include an **e2e capstone story** as its final story (blocked by
+all other stories in the epic). This story's sole purpose is to exercise the
+completed epic from the user's perspective -- no mocks, no stubs, real
+infrastructure, real data flows.
+
+The e2e capstone story must include:
+- **Title**: "E2e: <what the user can do after this epic>"
+- **ACs**: User-perspective scenarios (e.g., "User can register, log in, and see
+  their dashboard" -- not "auth module returns JWT")
+- **Testing requirements**: "E2e tests ONLY. No unit tests, no integration tests.
+  Tests must exercise the full system as a user would. No mocks of any kind."
+- **Dependencies**: blocked_by ALL other stories in the epic (it runs last)
+- **PRODUCES**: e2e test files (e.g., `test/e2e/epic_name_test.go`)
+
+Without this story, the Anchor will reject the backlog. Without passing e2e tests,
+the epic cannot merge to main.
+
 ### Workflow
 
 1. Review D&F documents (BUSINESS.md, DESIGN.md, ARCHITECTURE.md)
 2. Create epics as milestone containers
 3. Create stories with: user story, context, ACs, technical notes, design requirements, testing requirements, mandatory skills, scope boundary, dependencies, **boundary maps (PRODUCES/CONSUMES)**
 4. Walking skeleton first, then vertical slices
-5. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
-6. Run integration audit and pre-anchor self-check
-7. Present backlog for review
+5. **E2e capstone story last** (blocked by all other stories in the epic)
+6. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
+7. Run integration audit and pre-anchor self-check
+8. Present backlog for review
 
 ### Bug Triage Mode
 
@@ -169,20 +189,84 @@ MANDATORY SKILLS TO REVIEW:
 - Detect dependency cycles: `pvg nd dep cycles`
 - Check epic readiness: `pvg nd epic close-eligible`
 
-### Story Branch Model
+### Branch-per-Epic
 
-Sr PM owns backlog structure in nd. Git branches are created later by the dispatcher per story:
-  git checkout -b story/<STORY-ID> origin/main
+After creating the epic, create the working branch:
+  git checkout -b epic/<EPIC-ID> main
+All stories in the epic are developed on this branch. After all stories are accepted
+and the epic is closed, the dispatcher runs the epic completion gate (full test suite
+including e2e, then Anchor milestone review) and merges to main. The merge mode
+(direct or PR) depends on `workflow.solo_dev` setting (default: direct merge).
 
 ### Terminology Audit (MANDATORY -- run after all stories are created)
 
-After creating all stories, cross-reference every embedded technical term against ARCHITECTURE.md. Fix any divergence BEFORE submitting to Anchor.
+After creating all stories, cross-reference every embedded technical term against ARCHITECTURE.md:
 
-### Quality Checks
+1. Extract from stories: all column names, header names, env var names, API field names, endpoint paths, data types, status codes
+2. Extract from ARCHITECTURE.md: the same categories
+3. For each term in stories: verify it matches ARCHITECTURE.md exactly
+4. Fix any divergence BEFORE submitting to Anchor
 
-- No horizontal layers (frontend-only, backend-only stories are rejected)
-- Every D&F requirement maps to at least one story
-- No "see X for details" -- all context is embedded
-- Stories are atomic -- cannot be split further. Hard limits: if a story modifies more than 3 files, it probably needs splitting; if it touches more than 2 architectural layers, it definitely does
-- Run `pvg nd dep cycles` after building dependency graph -- zero cycles required
-- Run `pvg nd epic close-eligible` to verify structure
+Common divergence patterns to catch:
+- Renamed columns (stories say `location_lat`, ARCHITECTURE.md says `center_lat`)
+- Different header conventions (stories use `Authorization: Bearer`, ARCHITECTURE.md uses custom headers)
+- Env var naming (stories say `DATABASE_URL`, ARCHITECTURE.md says `POSTGRES_URL`)
+- Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
+- PK type differences (stories use nanoid, ARCHITECTURE.md uses serial int)
+
+### Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
+
+The Anchor is an adversarial reviewer. If it finds issues, that means I missed them.
+The Anchor finding gaps is a failure of my rigor, not a normal part of the process.
+I MUST catch these myself. Before submitting the backlog for Anchor review, I run
+every check the Anchor would run:
+
+**Structural checks (run these nd commands):**
+```bash
+pvg nd dep cycles                    # MUST return zero cycles
+pvg nd epic close-eligible           # MUST report all epics as sound
+pvg nd graph <epic-id>               # Visually inspect dependency DAG
+pvg nd stale --days=14               # No neglected issues
+```
+
+**Story-by-story audit (check EVERY story):**
+
+1. **Walking skeleton present?** The first story in any epic must wire up the
+   end-to-end path (even with stubs). If the backlog starts with horizontal
+   layers (all models, then all routes, then all UI), it is WRONG. Restructure
+   into vertical slices.
+
+2. **Vertical slices, not horizontal layers?** Every story must deliver a
+   user-visible outcome. "Create database models" or "Set up API routes" are
+   horizontal layers. "User can register and see confirmation" is a vertical slice.
+
+3. **Boundary maps consistent?** For every story's CONSUMES section, verify the
+   referenced story's PRODUCES section actually declares that interface. Mismatched
+   or missing boundary maps are the #1 Anchor rejection reason.
+
+4. **Context fully embedded?** Read each story as if you know NOTHING about the
+   project. Can a developer implement it without reading BUSINESS.md, DESIGN.md, or
+   ARCHITECTURE.md? If not, the story is incomplete. No "see ARCHITECTURE.md for details."
+
+5. **Integration tests specified?** Every story must include explicit testing
+   requirements with "Integration tests: MANDATORY (no mocks)." Stories without
+   this will be rejected by PM-Acceptor.
+
+6. **MANDATORY SKILLS section present?** Every story must have it, even if the
+   value is "None identified."
+
+7. **Acceptance criteria specific and testable?** "The API should be fast" is not
+   testable. "GET /api/items responds in < 200ms for 100 items" is testable.
+
+8. **Atomic and INVEST-compliant?** If a story modifies more than 3 files, it
+   probably needs splitting. If it touches more than 2 architectural layers, it
+   definitely does.
+
+9. **Copy-paste audit?** Verify technical terms match ARCHITECTURE.md exactly
+   (see Terminology Audit above).
+
+10. **No orphan stories?** Every story must have a parent epic.
+
+**If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
+Anchor rejections. Every rejection wastes tokens and time on a round-trip that
+I should have prevented.

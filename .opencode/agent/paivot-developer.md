@@ -53,23 +53,26 @@ When neither phase is specified: normal mode (write both tests and code).
 4. If GREEN PHASE: write implementation to pass committed tests
 5. If normal: implement the change and write tests
 6. Run CI locally, capture output
-7. **Self-check: scan your changed files for stubs and incomplete implementation** (see Pre-Delivery Self-Check below)
-8. Commit to story branch (story/<ID>, merged to main after PM acceptance)
+7. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
+8. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
 9. After writing delivery notes, run `pvg story deliver <id>`
-10. Deliver with comprehensive proof: CI results, coverage, AC verification table, self-check results
+10. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
 
 ### Pre-Delivery Self-Check (MANDATORY)
 
-Before marking a story as delivered, scan your changed files for incomplete implementation:
+Before marking a story as delivered, run:
+```bash
+pvg verify <paths-to-changed-files> --format=text
+```
 
-Check for these patterns in your delivered code:
-- **Stubs**: `NotImplementedError`, `panic("todo")`, `return {}`, bare `pass`, `unimplemented!()`
-- **Thin files**: files with only boilerplate/imports and no real logic
-- **TODO markers**: should be resolved or documented in delivery proof explaining why they remain
+This catches stubs, thin files, and TODO markers that the PM-Acceptor will reject on sight.
+Pass the explicit changed file paths, not `.`. If you choose to scan a directory instead,
+add `--include-tests` whenever test files changed.
+Fix any `stub` or `thin_file` issues before delivery. `todo` markers should be resolved
+or documented in the delivery proof explaining why they remain.
 
-Fix any stubs or thin file issues before delivery. The PM-Acceptor runs stub detection as
-its FIRST step (Tier 1, before LLM review). Delivering code that fails this check wastes
-everyone's tokens.
+The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
+that fails this check wastes everyone's tokens.
 
 ### nd Commands
 

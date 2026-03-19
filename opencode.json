@@ -84,7 +84,7 @@
       "template": ".opencode/commands/piv-start.md"
     },
     "piv-loop": {
-      "description": "Run unattended execution loop until complete or blocked",
+      "description": "Run unattended execution loop until blocked or all work is done",
       "template": ".opencode/commands/piv-loop.md"
     },
     "piv-cancel-loop": {
