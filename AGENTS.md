@@ -50,12 +50,16 @@ For nd-backed execution, the live backlog must be branch-independent.
 
 ### Dispatcher Queries
 
-```bash
-pvg nd list --status in_progress --label delivered --json  # Find work for PM-Acceptor
-pvg nd list --status open --label rejected --json          # Find rejected work for Developer
-pvg nd ready --sort priority --json                        # Find new work for Developer
-pvg nd list --status in_progress --json                    # Check active work
-```
+**`pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch decisions.**
+Do NOT query nd directly with `pvg nd ready --json` or `pvg nd list --json` for choosing
+what to work on next. Those queries are unscoped and will return stories from ALL epics,
+breaking containment.
+
+You MAY use `pvg nd` directly for:
+- Reading story content before spawning a developer (`pvg nd show STORY_ID`)
+- Checking story labels (`pvg nd show STORY_ID --json`)
+- Bug triage routing (DISCOVERED_BUG blocks)
+- Epic auto-close checks after PM acceptance
 
 ## Model Portability Rules
 
@@ -79,6 +83,7 @@ When Paivot is invoked, you operate as **dispatcher-only**. You coordinate agent
 - Skip agents to "save time"
 - Resolve merge conflicts yourself (spawn a developer -- conflict resolution requires code judgment)
 - Edit source files for any reason, including "cleanup" or "git maintenance"
+- Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 
 ### You DO:
 - Spawn BLT agents (BA, Designer, Architect) and relay their questions
@@ -254,17 +259,44 @@ omissions, hallucinations, and drift before they cascade downstream.
 
 ## Execution Loop
 
-### Priority Order
+The execution loop drains one epic at a time. Default is single-epic mode:
+`pvg loop setup` (no flags) auto-selects the highest-priority epic with actionable work.
+`--all` is the opt-in escape hatch for running across all epics without containment.
 
-Each iteration, pick work in this order:
+### Iteration Protocol
 
-0. **Sr PM for bug triage** (highest -- scan agent output for `DISCOVERED_BUG:` blocks)
+Each iteration:
+
+0. **Sr PM for bug triage** (highest -- scan agent output for `DISCOVERED_BUG:` blocks
+   BEFORE running `pvg loop next --json`)
 1. **Ask `pvg` for the next deterministic action**
    ```bash
    pvg loop next --json
    ```
-   `pvg` resolves delivered -> rejected -> ready ordering, honors active priority-epic
-   scope, and tells the dispatcher whether to act, wait, stop, or escalate.
+   This returns a JSON decision scoped to the current epic. Follow it:
+
+   | Decision | Action |
+   |----------|--------|
+   | `act` | Spawn the agent specified (developer or pm_acceptor) |
+   | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then rotate |
+   | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user |
+   | `wait` | Agents are working in the current epic. Do nothing |
+   | `rotate` | Epic is done and gate passed. Update loop state to the new epic in `next_epic` |
+   | `complete` | All epics drained. Allow exit |
+   | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
+
+### Epic Flow
+
+The loop drains one epic at a time:
+
+1. **Start**: auto-selects the highest-priority epic with actionable work
+2. **Execute**: all parallelization happens WITHIN the current epic
+3. **Complete**: when all stories are accepted and merged, `pvg loop next --json` returns `epic_complete`
+4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
+5. **Rotate**: `pvg loop next --json` returns `rotate` with `next_epic` -- update state and continue
+
+Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
+MUST finish before rotation.
 
 ### Developer Spawning: Normal vs Hard-TDD
 
@@ -297,14 +329,15 @@ those stories.
 ### Epic Auto-Close
 
 After PM-Acceptor accepts a story, it checks if all siblings in the parent epic are
-closed. If so, it closes the epic. Epic completion is NOT a loop termination event.
+closed. If so, it closes the epic.
 
-### Termination Conditions
+### Termination
 
-The loop runs across the ENTIRE backlog, not a single epic. It stops when:
-- Entire backlog complete (nothing open anywhere)
-- All remaining work blocked (no actionable items)
-- Max iterations reached (if set)
+The loop drains one epic at a time. It stops when:
+- All epics drained (`complete`)
+- Current epic blocked, no other epics (`epic_blocked`)
+- All remaining work globally blocked (`blocked`, --all mode)
+- Max iterations reached
 - User cancels with `/piv-cancel-loop`
 
 ### nd Command Reference
