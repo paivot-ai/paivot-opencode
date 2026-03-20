@@ -252,10 +252,18 @@ omissions, hallucinations, and drift before they cascade downstream.
 
 ### Post-D&F
 
+Pipeline: **Sr PM generates backlog -> pvg rtm check + pvg lint -> Anchor reviews**
+
 1. Spawn `@paivot-sr-pm` to create backlog from D&F documents
-2. Spawn `@paivot-anchor` for adversarial backlog review
-3. If REJECTED: Sr PM fixes, Anchor re-reviews (max 3 rounds)
-4. If APPROVED: proceed to execution
+2. Sr PM runs structural gates before submitting:
+   ```bash
+   pvg rtm check    # Verify all tagged D&F requirements have covering stories
+   pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+   ```
+   Both must pass. Sr PM fixes any failures before proceeding.
+3. Spawn `@paivot-anchor` for adversarial backlog review
+4. If REJECTED: Sr PM applies Feedback Generalization Protocol (sweep general rules, not just named instances), fixes, re-runs structural gates, Anchor re-reviews (max 3 rounds)
+5. If APPROVED: proceed to execution
 
 ## Execution Loop
 
