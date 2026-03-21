@@ -78,6 +78,8 @@ PROPOSED_CHANGES:
 
 ## nd (Read-Only)
 
+**NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd commands to access issue data.
+
 ```bash
 nd show <id>          # View a story
 nd list               # List stories

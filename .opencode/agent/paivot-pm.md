@@ -82,6 +82,8 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 ### nd Commands
 
+**NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - ACCEPT: `pvg story accept <id> --reason "Accepted: <summary>" --next <next-id>`
   This applies the accepted label, closes the story, and appends the accepted contract.
 - REJECT: `pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."`
