@@ -59,6 +59,18 @@ Scan the delivered files for incomplete implementation markers:
 
 TODO markers are informational -- note them but they are not automatic rejections.
 
+**Tier 1b: Quality Gate Verification (deterministic -- run with Tier 1)**
+
+1. **Type specs on all public functions:** For every new module, verify all public
+   functions have type specifications. Missing type specs = REJECT.
+
+2. **Cross-cutting concern integration:** For each AC mentioning DLP, security scanning,
+   rate limiting, or audit logging, verify the code ACTUALLY CALLS the existing module.
+   REJECT if cross-cutting concern is mentioned but not integrated.
+
+3. **Config registration completeness:** When story adds config keys, verify they
+   appear in ALL required locations.
+
 **Tier 2: Command (deterministic -- check CI evidence)**
 
 - Evidence Check: are CI results, coverage, test output present?
@@ -74,6 +86,8 @@ TODO markers are informational -- note them but they are not automatic rejection
 - Code Quality Spot-Check: wiring verified? No dead code?
 - Boundary Map Verification: does the delivered code actually PRODUCE what the story
   declared in its PRODUCES section? Check exports, function signatures, endpoints.
+- **Walking Skeleton Pattern Check:** If this story follows a walking skeleton,
+  verify it follows the same patterns. Divergence suggests incomplete pattern copying.
 
 **Tier 4: Human (only when agent genuinely cannot verify)**
 

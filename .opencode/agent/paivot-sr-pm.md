@@ -100,6 +100,18 @@ This forces interface thinking before implementation. When a downstream story is
 its CONSUMES section is verified against the upstream story's PRODUCES section. No more
 silent assumptions about what exists. Contracts are explicit and checked by the Anchor.
 
+### CONSUMES Must Include API Signatures (CRITICAL)
+
+CONSUMES entries that name only the file path are INSUFFICIENT. Every CONSUMES entry must include:
+1. The upstream story ID and file path
+2. The actual function signature
+3. For cross-cutting modules, include a usage example
+
+### Cross-Cutting Concern Discovery (MANDATORY during story creation)
+
+When writing stories involving security, configuration, or observability, SEARCH THE
+CODEBASE for existing modules and embed their API in CONSUMES.
+
 ### E2e Capstone Story (MANDATORY per epic)
 
 Every epic MUST include an **e2e capstone story** as its final story (blocked by
@@ -288,6 +300,13 @@ pvg nd stale --days=14               # No neglected issues
    (see Terminology Audit above).
 
 10. **No orphan stories?** Every story must have a parent epic.
+
+11. **CONSUMES includes API signatures?** Bare file paths without function signatures
+    are insufficient for ephemeral developers.
+
+12. **Walking skeleton establishes ALL quality gate patterns?** The first story
+    sets the template. Verify its ACs require type specs, cross-cutting integration,
+    and config patterns.
 
 **If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that

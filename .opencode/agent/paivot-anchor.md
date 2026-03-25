@@ -93,6 +93,10 @@ and misses other violations of the same rule.
 - Zero dependency cycles? (run `nd dep cycles`)
 - No stale issues? (run `nd stale --days=14`)
 - **Boundary maps consistent?** Every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED.
+- **Walking skeleton establishes ALL quality gate patterns?** If the skeleton omits
+  type specs or cross-cutting integrations, every subsequent story propagates the gap. REJECTED.
+- **CONSUMES includes API signatures?** Bare file paths without signatures = REJECTED.
+- **Cross-cutting concerns reference existing modules?** Vague cross-cutting references = REJECTED.
 
 ### E2e Test Existence (Milestone Review -- CRITICAL)
 
@@ -108,6 +112,13 @@ e2e tests exist -- that is not passing, that is missing.
 
 After confirming e2e tests exist, verify they were actually executed in the
 test output (not skipped, not gated behind env vars).
+
+### Quality Gate Validation (Milestone Review)
+
+Verify ALL new modules meet quality gates:
+1. **Type spec coverage:** Every public function must have type specifications.
+2. **Cross-cutting module integration:** Verify code calls existing modules.
+3. **Walking skeleton pattern propagation:** All modules follow established patterns.
 
 ### Hard-TDD Validation (Milestone Review)
 
