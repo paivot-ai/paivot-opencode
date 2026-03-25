@@ -163,8 +163,17 @@ You are a dispatcher. You coordinate agents. You NEVER:
 - Edit source files for any reason
 - Re-close stories that the PM-Acceptor already closed
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
+- Continue or resume a failed developer agent -- clean up and re-spawn fresh
+- Inspect agent worktree internals (cd into worktrees, run git log, read files there)
 
 If an agent fails, re-spawn it with corrective guidance. Do not do its work.
+
+### When a Developer Agent Fails
+If a developer agent fails or returns partial output:
+1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting worktree)
+2. If NOT delivered: remove worktree, re-spawn fresh developer
+3. If delivered: proceed with PM review
+4. NEVER inspect worktree internals or try to continue the agent
 
 ## Infrastructure Context (MANDATORY before first developer spawn)
 
@@ -222,6 +231,26 @@ The developer receives everything needed to implement WITHOUT searching the code
 | Sr. PM (bug triage) | `@paivot-sr-pm` | DISCOVERED_BUG blocks found in agent output |
 | PM-Acceptor | `@paivot-pm` | Stories with `delivered` label |
 | Developer | `@paivot-developer` | Ready or rejected stories |
+
+## Story Branch Setup
+
+When a story is selected for development, the dispatcher creates the story branch:
+
+```bash
+git checkout -b story/STORY_ID
+git push -u origin story/STORY_ID
+```
+
+Then create a worktree for the developer on the story branch:
+```bash
+git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
+```
+
+The developer prompt MUST include the worktree path.
+
+**CRITICAL: Never use auto-isolation that creates disconnected branches.**
+Commits on orphan branches are lost on cleanup. Always create worktrees manually
+on the story branch.
 
 ## Developer Spawning: Normal vs Hard-TDD
 
@@ -422,6 +451,35 @@ test suite -- not as normal.
 ## Cancellation
 
 To cancel: `/piv-cancel-loop` or `pvg loop cancel`
+
+## Worktree Lifecycle
+
+### Naming Convention
+| Role | Worktree path | Branch |
+|------|---------------|--------|
+| Developer | `.claude/worktrees/dev-<STORY_ID>` | `story/<STORY_ID>` |
+| PM-Acceptor | `.claude/worktrees/pm-<STORY_ID>` | `story/<STORY_ID>` |
+
+All worktrees check out the SAME story branch. The worktree is disposable;
+the story branch is the durable record.
+
+### Flow
+1. Dispatcher creates story branch
+2. Dispatcher creates dev worktree on story branch
+3. Developer works, commits, pushes on story branch
+4. Developer marks delivered
+5. Dispatcher removes dev worktree: `git worktree remove --force .claude/worktrees/dev-<STORY_ID>`
+6. Dispatcher creates PM worktree on same story branch
+7. PM reviews, dispatcher removes PM worktree
+8. If accepted: merge story to epic, delete story branch
+
+### Cleanup
+`git worktree remove --force .claude/worktrees/<name>` -- always use --force.
+Do NOT delete story branches when removing worktrees.
+
+### Branch Locking
+Git prevents two worktrees on the same branch. Dev worktree MUST be removed
+before PM worktree can be created.
 
 ## Post-Compaction Recovery
 
