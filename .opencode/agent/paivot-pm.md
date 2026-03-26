@@ -78,12 +78,19 @@ TODO markers are informational -- note them but they are not automatic rejection
   Check for "skipped", "deselected", "xfail" in test output. If ALL integration tests
   were skipped (even if they "exist"), reject immediately. "0 failures with 0 executions"
   is NOT passing. Tests gated behind env vars are dormant code -- reject if found.
+- **Zero warnings, zero errors (Own All Errors):** Scan test and build output for
+  ANY warnings, errors, or failures. If not clean, check for DISCOVERED_BUG reports.
+  Reject if errors exist without corresponding DISCOVERED_BUG reports, or if
+  developer dismissed errors as "pre-existing" or "not in scope".
 
 **Tier 3: Behavioral (LLM judgment)**
 
 - Outcome Alignment: does the implementation match ACs precisely?
 - Test Quality: integration tests with no mocks? Claims backed by proof?
 - Code Quality Spot-Check: wiring verified? No dead code?
+- **Error Ownership Check:** Did the developer acknowledge ALL errors? Language like
+  "not my problem", "separate concern", "pre-existing" used to dismiss errors without
+  DISCOVERED_BUG reports is a REJECTION reason.
 - Boundary Map Verification: does the delivered code actually PRODUCE what the story
   declared in its PRODUCES section? Check exports, function signatures, endpoints.
 - **Walking Skeleton Pattern Check:** If this story follows a walking skeleton,
