@@ -62,10 +62,9 @@ This returns a JSON decision. Follow it:
 | Decision | Action |
 |----------|--------|
 | `act` | Spawn the agent specified in `next` (developer or pm_acceptor) |
-| `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then rotate |
+| `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
 | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user |
 | `wait` | Agents are working in the current epic. Do nothing. Wait for completions |
-| `rotate` | Epic is done and gate passed. Update loop state to the new epic in `next_epic` |
 | `complete` | All epics drained. Allow exit |
 | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
 
@@ -124,7 +123,7 @@ The loop drains one epic at a time:
 3. **Complete**: when all stories are accepted and merged,
    `pvg loop next --json` returns `epic_complete`
 4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
-5. **Rotate**: `pvg loop next --json` returns `rotate` with `next_epic` -- update state and continue
+5. **Rotate**: call `pvg loop rotate <next_epic>` to transition loop state, then continue iterating
 
 Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
 MUST finish before rotation. There is no cherry-picking across epics.
@@ -415,8 +414,10 @@ If your environment provides PR automation, use it and continue unattended.
 Otherwise stop after the PR is created and ask the user to complete or
 approve the merge. Branch cleanup happens after the PR is merged.
 
-**After merge to main**: run `pvg loop next --json` again. It will return
-either `rotate` (with the next epic) or `complete` (all done).
+**After merge to main**: if `epic_complete` included a `next_epic`, run
+`pvg loop rotate <next_epic>` to transition the loop state, then resume
+with `pvg loop next --json`. If no `next_epic` was provided, the next
+call returns `complete` (all done).
 
 ## Termination
 
@@ -432,7 +433,7 @@ decisions:
 | Too many consecutive waits (3) | Allow exit |
 | Current epic has actionable work (`act`) | Continue |
 | Current epic complete, gate pending (`epic_complete`) | Run gate, continue |
-| Current epic complete, next epic exists (`rotate`) | Update state, continue |
+| Current epic complete, next epic exists | Call `pvg loop rotate`, continue |
 
 ### Live Demo (before session exit)
 

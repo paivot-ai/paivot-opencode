@@ -286,10 +286,9 @@ Each iteration:
    | Decision | Action |
    |----------|--------|
    | `act` | Spawn the agent specified (developer or pm_acceptor) |
-   | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then rotate |
+   | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
    | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user |
    | `wait` | Agents are working in the current epic. Do nothing |
-   | `rotate` | Epic is done and gate passed. Update loop state to the new epic in `next_epic` |
    | `complete` | All epics drained. Allow exit |
    | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
 
@@ -301,7 +300,7 @@ The loop drains one epic at a time:
 2. **Execute**: all parallelization happens WITHIN the current epic
 3. **Complete**: when all stories are accepted and merged, `pvg loop next --json` returns `epic_complete`
 4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
-5. **Rotate**: `pvg loop next --json` returns `rotate` with `next_epic` -- update state and continue
+5. **Rotate**: call `pvg loop rotate <next_epic>` to transition loop state, then continue iterating
 
 Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
 MUST finish before rotation.
