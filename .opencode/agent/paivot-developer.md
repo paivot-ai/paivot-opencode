@@ -64,7 +64,7 @@ When neither phase is specified: normal mode (write both tests and code).
    a. Verify type specs / signatures on ALL public functions you wrote
    b. Verify every cross-cutting AC uses the EXISTING module (not inline reimplementation)
    c. Verify all config keys are registered in ALL required locations
-8. Run CI locally, capture output
+8. Run the FULL test suite (not just the tests you wrote or modified), capture output. Your changes may break tests you didn't touch. If the project uses `mix test`, run `mix test`. If `cargo test`, run `cargo test`. Run ALL tests, not a subset.
 9. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
 10. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
 11. After writing delivery notes, run `pvg story deliver <id>`
