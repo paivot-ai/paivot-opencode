@@ -109,8 +109,30 @@ CONSUMES entries that name only the file path are INSUFFICIENT. Every CONSUMES e
 
 ### Cross-Cutting Concern Discovery (MANDATORY during story creation)
 
-When writing stories involving security, configuration, or observability, SEARCH THE
-CODEBASE for existing modules and embed their API in CONSUMES.
+When writing stories that involve security, configuration, observability, or other
+cross-cutting concerns, SEARCH THE CODEBASE for existing modules.
+
+**Preferred: codebase-memory-mcp** (when available):
+```
+# Find DLP, rate limiting, audit, config modules:
+search_graph(project_name="<project>", name_pattern=".*DLP.*|.*RateLimit.*|.*Audit.*|.*Config.*")
+
+# Get exact API signatures:
+get_code_snippet(project_name="<project>", node_name="DLP.scan")
+
+# Trace who calls it (verify actual usage count):
+trace_call_path(project_name="<project>", function_name="DLP.scan", direction="inbound")
+```
+
+**Fallback: grep** (when MCP tools are not available):
+```bash
+grep -rl "defmodule\|class\|module" lib/ src/ --include="*.ex" --include="*.ts" --include="*.py" | head -50
+```
+
+For each cross-cutting AC (DLP scan, rate limiting, audit logging, config registration),
+find the existing module and embed its API in the story's CONSUMES section. Stories
+that say "DLP scan the content" without providing the DLP module's API will cause
+developer failures.
 
 ### E2e Capstone Story (MANDATORY per epic)
 
@@ -247,6 +269,63 @@ Common divergence patterns to catch:
 - Env var naming (stories say `DATABASE_URL`, ARCHITECTURE.md says `POSTGRES_URL`)
 - Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
 - PK type differences (stories use nanoid, ARCHITECTURE.md uses serial int)
+
+### API Signature Verification (MANDATORY -- run BEFORE Pre-Anchor Self-Check)
+
+The #1 cause of Anchor rejections is hallucinated API signatures. D&F documents
+describe APIs at a high level -- the Sr PM then guesses the exact function signatures
+instead of reading the source. This ALWAYS fails.
+
+**For every API referenced in any story's PRODUCES or CONSUMES:**
+
+1. **Read the actual source file.** Not the D&F doc. Not the Architect's description.
+   The actual `.ex` / `.ts` / `.py` file in the repo or deps.
+2. **Copy the exact `@spec` / `@callback` / type signature** into the story.
+3. **For framework APIs (Jido, Phoenix, Ecto, etc.):** read the source in `deps/`,
+   not your training data. Framework APIs evolve between versions.
+4. **For project wrapper patterns:** check if the project wraps a library API
+   (e.g., `Praktical.AI.Generator` wrapping `Jido.AI`). If so, stories must
+   reference the WRAPPER, not the underlying library.
+
+**Preferred: use codebase-memory-mcp tools when available.** These are indexed,
+faster, and understand module relationships. Fall back to grep only if MCP tools
+are not available or the project is not indexed.
+
+```
+# PREFERRED: codebase-memory-mcp (use MCP tools if available)
+
+# Find module by name pattern:
+search_graph(project_name="<project>", name_pattern=".*ModuleName.*", label="Function")
+
+# Read exact function signature:
+get_code_snippet(project_name="<project>", node_name="ModuleName.function_name")
+
+# Count callers of a function (verify module counts):
+trace_call_path(project_name="<project>", function_name="ModuleName.function_name", direction="inbound")
+
+# Find all functions in a module:
+search_graph(project_name="<project>", name_pattern="ModuleName\\..*", label="Function")
+```
+
+```bash
+# FALLBACK: grep (when MCP tools are not available)
+
+# Find the actual module definition:
+grep -rn "defmodule.*ModuleName" lib/ deps/ --include="*.ex" | head -5
+
+# Extract @spec and @callback annotations:
+grep -n "@spec\|@callback" <file_path>
+
+# Verify module counts (never trust D&F numbers):
+grep -rl "ModuleName.function_name" lib/ --include="*.ex" | wc -l
+```
+
+**If you cannot find a source file for an API you're referencing, STOP.**
+The API may not exist yet, or you may have the wrong module name. Ask the
+dispatcher to clarify before writing stories with unverified signatures.
+
+Do NOT proceed to Pre-Anchor Self-Check until every API signature in every
+story has been verified against source.
 
 ### Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 

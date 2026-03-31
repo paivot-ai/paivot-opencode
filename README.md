@@ -22,6 +22,23 @@ This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-
 | [vlt](https://github.com/paivot-ai/vlt) | Vault CLI for knowledge management | `git clone && make install` |
 | LLM API key | Anthropic recommended (Opus/Sonnet) | Provider-specific |
 
+Strongly recommended:
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| Codebase indexing MCP | API signature verification, cross-cutting concern discovery | See below |
+
+A codebase indexing MCP server dramatically improves story quality. When available, Paivot agents use it for API signature verification, cross-cutting concern discovery, and module count validation instead of grep. This prevents the most common class of Anchor rejections: hallucinated API signatures.
+
+Any MCP server that provides `search_graph`, `get_code_snippet`, and `trace_call_path` works. Two tested options:
+
+- **[codebase-memory-mcp](https://github.com/nicobailon/codebase-memory-mcp)** -- Graph-based indexing with Cypher queries, call path tracing, and architecture summaries
+- **[Augment Code](https://www.augmentcode.com/)** (cx) -- Commercial codebase intelligence with similar capabilities
+
+Configure via your OpenCode MCP settings or project-level MCP config. After indexing, agents automatically prefer MCP tools over grep for codebase queries.
+
+Without a codebase indexing server, agents fall back to grep/ripgrep. This works but is slower, less precise on call graph analysis, and cannot verify module counts as reliably.
+
 Optional:
 - [Go](https://go.dev/dl/) 1.24+ -- only needed if you want to build `pvg` from source instead of using its release binaries
 
