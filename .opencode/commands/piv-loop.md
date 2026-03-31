@@ -79,35 +79,15 @@ You MAY use nd directly for:
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
-### nd dependency commands (reference)
+### nd and vlt Usage
 
-Dependencies are managed by `pvg nd dep`, NOT by flags on `pvg nd update`:
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill documentation.
 
-```bash
-pvg nd dep add A B          # A depends on B (B blocks A)
-pvg nd dep rm A B           # Remove dependency
-pvg nd dep list A           # List dependencies of A
-pvg nd dep tree A           # Show full dependency tree
-pvg nd dep cycles           # Detect circular dependencies
-```
+Do NOT guess nd flags or command syntax. Read the skill first.
 
-**Auto-cascade:** When a blocker is closed, nd automatically unblocks dependents.
-You do NOT need to manually run `pvg nd dep rm` after closing a blocker story.
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
-**`pvg nd update` does NOT support `--remove-blocked-by` or `--add-blocked-by`.**
-These flags do not exist. Always use `pvg nd dep add` / `pvg nd dep rm` for dependency changes.
-
-### nd flag gotchas
-
-**Priority is numeric, not P-prefixed.** nd displays `P0`..`P4` but the CLI
-accepts only the integer:
-
-```bash
-pvg nd create --priority 0    # correct (P0)
-pvg nd create --priority 2    # correct (P2)
-pvg nd create --priority P2   # WRONG -- "invalid syntax" error
-pvg nd update X --priority 1  # correct
-```
+**NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
 
 When `decision=act`, spawn the returned role for the returned story:
 - `pm_acceptor` for `queue=delivered`

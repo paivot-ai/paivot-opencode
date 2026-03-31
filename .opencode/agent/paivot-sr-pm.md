@@ -227,21 +227,22 @@ MANDATORY SKILLS TO REVIEW:
 
 5. Set dependency chain: `pvg nd dep add <blocked-story> <bug-id>`
 
-### nd Commands for Story Management
+### nd and vlt Usage
+
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill documentation.
+
+Do NOT guess nd flags or command syntax. Read the skill first.
 
 **NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
+
+**Key workflow commands:**
 - Create epic: `pvg nd create "Epic title" --type=epic --priority=1`
 - Create story: `pvg nd create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"`
 - Create bug (ONLY via Bug Triage Mode): `pvg nd create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"`
 - Add dependencies: `pvg nd dep add <story-id> <blocker-id>`
-- Soft-link related stories: `pvg nd dep relate <story-id> <related-id>`
-- Add decision notes: `pvg nd comments add <id> "DECISION: <rationale>"`
-- List stories in epic: `pvg nd children <epic-id> --json`
-- Filter by parent: `pvg nd list --parent <epic-id>`
-- Ready work in epic: `pvg nd ready --parent <epic-id> --json`
 - Verify structure: `pvg nd epic tree <epic-id>`
-- Visualize dependency DAG: `pvg nd graph <epic-id>`
 - Detect dependency cycles: `pvg nd dep cycles`
 - Check epic readiness: `pvg nd epic close-eligible`
 

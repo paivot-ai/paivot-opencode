@@ -113,10 +113,17 @@ or documented in the delivery proof explaining why they remain.
 The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
 that fails this check wastes everyone's tokens.
 
-### nd Commands
+### nd and vlt Usage
+
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill documentation.
+
+Do NOT guess nd flags or command syntax. Read the skill first.
 
 **NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
+
+**Workflow commands:**
 - Claim the story: `pvg nd update <id> --status=in_progress`
 - Breadcrumb notes (compaction-safe): `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."`
 - Structured progress notes: `pvg nd comments add <id> "..."`

@@ -69,16 +69,21 @@ SCOPE: Sweep all 6 epics in the backlog.
 This prevents the failure mode where the Sr PM fixes only the named instances
 and misses other violations of the same rule.
 
-### nd Commands (read-only + diagnostic)
+### nd and vlt Usage
 
-- Visualize dependency DAG: nd graph / nd graph <epic-id>
-- Detect dependency cycles: nd dep cycles
-- Inspect dependency tree: nd dep tree <id>
-- Review execution path: nd path / nd path <id>
-- Vault health check: nd doctor
-- Find neglected issues: nd stale --days=14
-- Check milestone readiness: nd epic close-eligible
-- Backlog statistics: nd stats
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill documentation.
+
+Do NOT guess nd flags or command syntax. Read the skill first.
+
+**NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
+
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
+
+**Key diagnostic commands:**
+- Visualize dependency DAG: `pvg nd graph <epic-id>`
+- Detect dependency cycles: `pvg nd dep cycles`
+- Find neglected issues: `pvg nd stale --days=14`
+- Check milestone readiness: `pvg nd epic close-eligible`
 
 ### Master Checklist
 
