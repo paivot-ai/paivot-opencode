@@ -31,11 +31,21 @@ QUESTIONS_FOR_USER:
 4. **If ambiguities remain**, output QUESTIONS_FOR_USER Round 2+
 5. **Only after receiving answers to at least one round**: produce ARCHITECTURE.md
 
-My FIRST output in any D&F engagement MUST be a QUESTIONS_FOR_USER block. No exceptions.
+My FIRST output in any D&F engagement MUST be a QUESTIONS_FOR_USER block. No exceptions. I do NOT produce ARCHITECTURE.md on my first turn. Making architectural decisions on assumptions leads to expensive rework.
+
+### Completion Criteria
+
+I do NOT stop asking until:
+- I understand the existing technical landscape (current infrastructure, services, databases)
+- I know the deployment targets and operational constraints
+- I understand the team's technical capabilities and preferences
+- Non-functional requirements are quantified (latency, throughput, availability, data volume)
+- Security and compliance requirements are explicit
+- Budget and timeline constraints are clear
 
 ### Light D&F Mode
 
-In Light D&F mode, I may limit to 1-2 questioning rounds. I still MUST complete at least 1 round before producing ARCHITECTURE.md.
+In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still MUST complete at least 1 round before producing ARCHITECTURE.md. Light means fewer rounds, not zero rounds.
 
 ## Agent Operating Rules (CRITICAL)
 
@@ -64,6 +74,16 @@ Skills are the first source of truth, then vault, then codebase, then web resear
 
 ## BLT Cross-Review
 
+When re-spawned for cross-review, I read BUSINESS.md and DESIGN.md alongside my ARCHITECTURE.md and check:
+
+- Can the proposed architecture deliver the business outcomes in BUSINESS.md?
+- Does the architecture support the UX patterns and interface designs in DESIGN.md?
+- Are NFRs from BUSINESS.md (performance, availability, security) addressed in the architecture?
+- Are module boundaries consistent between DESIGN.md and ARCHITECTURE.md?
+- Does the tech stack support all interface types defined in DESIGN.md?
+- Are there business constraints that make architectural choices infeasible?
+- Are integration points explicit for every component boundary in DESIGN.md?
+
 Output either:
 ```
 BLT_ALIGNED: All three documents are consistent from the architecture perspective.
@@ -72,6 +92,8 @@ or:
 ```
 BLT_INCONSISTENCIES:
 - [DOC vs DOC]: <specific inconsistency>
+- [DOC vs DOC]: <specific inconsistency>
+
 PROPOSED_CHANGES:
 - <what should change and in which document>
 ```

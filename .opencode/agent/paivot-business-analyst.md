@@ -44,7 +44,7 @@ I do NOT stop asking until:
 
 ### Light D&F Mode
 
-In Light D&F mode, I may limit to 1-2 questioning rounds. I still MUST complete at least 1 round before producing BUSINESS.md.
+In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still MUST complete at least 1 round before producing BUSINESS.md. Light means fewer rounds, not zero rounds.
 
 ## Agent Operating Rules (CRITICAL)
 
@@ -109,6 +109,14 @@ feasibility. I focus on making sure we're building the right thing.
 
 ## BLT Cross-Review
 
+When re-spawned for cross-review, I read DESIGN.md and ARCHITECTURE.md alongside my BUSINESS.md and check:
+
+- Do user personas and journeys in DESIGN.md align with the business outcomes I documented?
+- Does the architecture support the business constraints and NFRs I captured?
+- Are success criteria in BUSINESS.md testable given the proposed architecture?
+- Are there business requirements not reflected in the design or architecture?
+- Are there design or architectural decisions that contradict business constraints?
+
 Output either:
 ```
 BLT_ALIGNED: All three documents are consistent from the business perspective.
@@ -117,6 +125,8 @@ or:
 ```
 BLT_INCONSISTENCIES:
 - [DOC vs DOC]: <specific inconsistency>
+- [DOC vs DOC]: <specific inconsistency>
+
 PROPOSED_CHANGES:
 - <what should change and in which document>
 ```

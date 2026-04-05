@@ -118,10 +118,10 @@ or from PM-Acceptor in centralized mode (the default) appear as DISCOVERED_BUG b
 
 ### After PM-Acceptor Acceptance
 
-**IMMEDIATELY after acceptance**: merge the story branch to main (or epic branch
-if using two-level branching). Complete the merge -- including conflict resolution
-if needed -- before running `pvg loop next --json` again. An accepted story with
-an unmerged branch is incomplete work.
+**IMMEDIATELY after acceptance**: merge the story branch to the epic branch.
+Complete the merge -- including conflict resolution if needed -- before running
+`pvg loop next --json` again. An accepted story with an unmerged branch is
+incomplete work.
 
 ## Epic Flow
 
@@ -130,10 +130,11 @@ The loop drains one epic at a time:
 1. **Start**: auto-selects the highest-priority epic with actionable work
 2. **Execute**: all parallelization happens WITHIN the current epic
    (multiple developers on different stories, one PM reviewing)
-3. **Complete**: when all stories are accepted and merged,
+3. **Complete**: when all stories are accepted and merged to the epic branch,
    `pvg loop next --json` returns `epic_complete`
 4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
-5. **Rotate**: call `pvg loop rotate <next_epic>` to transition loop state, then continue iterating
+5. **Retro**: spawn `@paivot-retro` to extract learnings before rotating
+6. **Rotate**: call `pvg loop rotate <next_epic>` to transition loop state, then continue iterating
 
 Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
 MUST finish before rotation. There is no cherry-picking across epics.
@@ -171,6 +172,9 @@ You are a dispatcher. You coordinate agents. You NEVER:
 - Resolve merge conflicts yourself (spawn a developer)
 - Edit source files for any reason
 - Re-close stories that the PM-Acceptor already closed
+- Override, re-interpret, or bypass PM rejections -- if the PM rejected, the story goes back to the developer with the rejection feedback. You do not get to decide the rejection was "on a technicality" or "procedural." PM decisions are final.
+- Re-submit rejected stories for acceptance without developer rework -- the developer must address the rejection feedback and re-deliver
+- Call `pvg loop cancel` -- only the user can cancel the loop. You do not get to decide when to stop based on "context exhaustion," "productivity," "session length," or any other self-assessed risk.
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 - Continue or resume a failed developer agent -- clean up and re-spawn fresh
 - Inspect agent worktree internals (cd into worktrees, run git log, read files there)
@@ -223,9 +227,20 @@ For each consumed module/file, read it and extract:
 Include as "CODEBASE CONTEXT" in the developer prompt.
 
 ### Step 3: Scan ACs for cross-cutting keywords
-Scan ACs for: DLP, rate limit, audit, config, security, telemetry.
-For each keyword, grep the codebase for relevant modules. Read discovered modules
-and inject their public APIs into the developer prompt.
+
+Scan the story's acceptance criteria for keywords that indicate cross-cutting
+concern integration is needed:
+
+| Keyword | Module to discover | What to inject |
+|---------|-------------------|----------------|
+| DLP, scan, credential, PII | Gateway DLP/security module | scan API + severity handling |
+| rate limit, throttle | Gateway rate limiter | check API + config key pattern |
+| config, configuration | Project config module | How to add runtime keys + defaults |
+| audit, log, telemetry | Observability module | Event emission pattern |
+| allowed_paths, security | Path validation module | validate_allowed pattern |
+
+For each keyword found, grep the codebase for relevant modules. Read discovered
+modules and inject their public APIs into the developer prompt.
 
 ### Step 4: Inject existing patterns from accepted stories
 If the story follows a walking skeleton, read one accepted module as a TEMPLATE
@@ -240,13 +255,24 @@ The developer receives everything needed to implement WITHOUT searching the code
 | Sr. PM (bug triage) | `@paivot-sr-pm` | DISCOVERED_BUG blocks found in agent output |
 | PM-Acceptor | `@paivot-pm` | Stories with `delivered` label |
 | Developer | `@paivot-developer` | Ready or rejected stories |
+| Retro | `@paivot-retro` | After epic completion gate passes (before rotation) |
+| Anchor | `@paivot-anchor` | Backlog review or milestone review during epic gate |
 
 ## Story Branch Setup
 
-When a story is selected for development, the dispatcher creates the story branch:
+When a story is selected for development, the dispatcher creates the story branch
+from the epic branch (two-level model: `main -> epic -> story`):
 
 ```bash
-git checkout -b story/STORY_ID
+# Ensure epic branch exists (create if needed)
+git fetch origin
+if ! git rev-parse --verify origin/epic/EPIC_ID >/dev/null 2>&1; then
+  git checkout -b epic/EPIC_ID origin/main
+  git push -u origin epic/EPIC_ID
+fi
+
+# Create story branch from epic
+git checkout -b story/STORY_ID origin/epic/EPIC_ID
 git push -u origin story/STORY_ID
 ```
 
@@ -293,7 +319,7 @@ all conflicts.
 Steps:
 1. git fetch origin
 2. git checkout story/STORY_ID
-3. git rebase origin/main  (or origin/epic/EPIC_ID if two-level branching)
+3. git rebase origin/epic/EPIC_ID
 4. Resolve conflicts in each file (keep functionality from both sides)
 5. git rebase --continue after each resolution
 6. Run tests to verify nothing is broken
@@ -307,9 +333,11 @@ After developer completes, retry `pvg story merge <STORY-ID>`. If retry still
 fails, escalate to user.
 
 **Merge order:** If multiple stories are waiting to merge, process them in
-dependency order first, then priority order (P0 first). Use `pvg nd dep tree STORY_ID`
-and `pvg nd show STORY_ID --json` to inspect dependencies; merge prerequisite
-stories before dependents.
+dependency order first, then priority order (P0 first) within each ready layer.
+Do NOT use `parent` for merge ordering: `parent` is epic containment, not the
+dependency graph. Use `pvg nd dep tree STORY_ID` and `pvg nd show STORY_ID --json`
+to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories
+before dependents.
 
 ## Epic Completion (All Stories Merged)
 
@@ -461,8 +489,10 @@ Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
 
 **After retro**: if `epic_complete` included a `next_epic`, run
 `pvg loop rotate <next_epic>` to transition the loop state, then resume
-with `pvg loop next --json`. If no `next_epic` was provided, the next
-call returns `complete` (all done).
+with `pvg loop next --json`. If no `next_epic` was provided (last epic),
+the completion gate is still MANDATORY -- run all four steps (e2e, Anchor,
+merge to main, retro) before allowing exit. The stop hook enforces this
+structurally: it blocks exit while the epic branch exists unmerged.
 
 ## Termination
 
@@ -471,14 +501,15 @@ decisions:
 
 | Condition | Action |
 |-----------|--------|
-| No actionable epics remain (`complete`) | Allow exit |
+| No actionable epics remain AND epic branch merged | Allow exit, remove state |
 | Current epic blocked, no other epics (`epic_blocked`) | Escalate to user, allow exit |
 | All remaining work globally blocked (`blocked`, --all mode) | Allow exit |
-| Max iterations reached | Allow exit |
+| Max iterations reached | Allow exit, remove state |
 | Too many consecutive waits (3) | Allow exit |
 | Current epic has actionable work (`act`) | Continue |
-| Current epic complete, gate pending (`epic_complete`) | Run gate, continue |
-| Current epic complete, next epic exists | Call `pvg loop rotate`, continue |
+| Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
+| Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
+| Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
 
 ### Live Demo (before session exit)
 

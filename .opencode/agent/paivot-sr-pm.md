@@ -38,7 +38,8 @@ These prompts may run on Anthropic models or strong OSS coding models. Keep your
 
 - Every story must be a self-contained execution unit
 - Embed ALL context: what, how, why, design, testing, skills
-- Acceptance criteria must be specific and testable
+- Acceptance criteria must be specific and testable, tagged with EARS categories where they sharpen intent (Ubiquitous, Event, State, Optional, Unwanted -- see playbook EARS Reference)
+- USER INTENT section in every feature story (the underlying user need that AC serves; PM-Acceptor evaluates against this)
 - MANDATORY SKILLS TO REVIEW section in every story
 - INVEST-compliant: Independent, Negotiable, Valuable, Estimable, Small, Testable
 - Integration tests (no mocks) are mandatory
@@ -58,7 +59,7 @@ Do NOT rename, paraphrase, or "improve" these values.
 
 ### The hard-tdd Label
 
-Apply `hard-tdd` label to stories requiring two-phase TDD enforcement. Apply when:
+Apply `hard-tdd` label to stories requiring two-phase TDD enforcement (Test Author writes tests first, then a separate Implementer writes code to pass them). Apply when:
 - User explicitly requests it for specific stories, epics, or areas
 - Security-critical paths, complex state machines, data migrations
 - Stories where subtle bugs would be costly to detect post-acceptance
@@ -93,7 +94,8 @@ PRODUCES:
 - src/middleware.ts -> authMiddleware()
 
 CONSUMES:
-- PROJ-a1b: src/auth.ts -> generateToken(), verifyToken()
+- PROJ-a1b: src/auth.ts -> generateToken(userId: string): string
+- PROJ-a1b: src/auth.ts -> verifyToken(token: string): Claims | null
 ```
 
 This forces interface thinking before implementation. When a downstream story is planned,
@@ -102,10 +104,34 @@ silent assumptions about what exists. Contracts are explicit and checked by the 
 
 ### CONSUMES Must Include API Signatures (CRITICAL)
 
-CONSUMES entries that name only the file path are INSUFFICIENT. Every CONSUMES entry must include:
+CONSUMES entries that name only the file path are INSUFFICIENT. Developers are
+ephemeral agents who see only the story -- they cannot discover module APIs on their
+own. Every CONSUMES entry must include:
+
 1. The upstream story ID and file path
-2. The actual function signature
-3. For cross-cutting modules, include a usage example
+2. The actual function signature (name, arguments, return type)
+3. For cross-cutting modules (DLP, rate limiting, config, audit), include a usage example
+
+Bad (developer will miss the integration):
+```
+CONSUMES:
+- PRA-jrm9: lib/praktical/config.ex -> :file_allowed_paths config key
+```
+
+Good (developer can implement immediately):
+```
+CONSUMES:
+- PRA-jrm9: lib/praktical/config.ex -> Config.get(:file_allowed_paths, default)
+  Pattern for adding new keys: add to @runtime_keys list, add to defaults(), read env var in config/runtime.exs
+```
+
+For cross-cutting security modules, always include the full call pattern:
+```
+CONSUMES:
+- (existing): lib/app/gateway/dlp.ex -> DLP.scan(content, direction: :outbound)
+  Returns {:ok, []} when clean, {:ok, [%{severity: :block|:warn, ...}]} when matched.
+  Block on :block severity, allow on :warn.
+```
 
 ### Cross-Cutting Concern Discovery (MANDATORY during story creation)
 
@@ -169,7 +195,41 @@ the epic cannot merge to main.
    ```
    Both must pass. Fix any failures before proceeding. These are deterministic
    checks -- if they fail, the Anchor WILL reject the backlog for the same reason.
+   **If `pvg lint` reports artifact collisions, see Collision Resolution below.**
 9. Present backlog for review
+
+### Artifact Collision Resolution
+
+When `pvg lint` reports collisions, multiple stories PRODUCE the same file path
+without a recognized dependency chain. Lint understands chains -- if Story B has
+Story A in `blocked_by` or CONSUMES from Story A, they can both PRODUCE the same
+file (sequential modification). Lint walks transitive dependencies, so A -> B -> C
+is also recognized as a valid chain.
+
+**Resolution strategies (in order of preference):**
+
+1. **Establish the chain** (most common fix): If one story logically modifies the
+   file after another, add `blocked_by` to the later story AND add a CONSUMES
+   entry referencing the upstream story for that file. This tells lint the
+   modification is sequential.
+
+   ```
+   # Story B modifies a file that Story A creates:
+   blocked_by: [STORY-A]
+
+   CONSUMES:
+   - STORY-A: lib/auth.ex -> AuthService module
+   ```
+
+2. **Merge stories**: If two stories modify the same file and are tightly coupled
+   (hard to separate their changes), merge them into one story.
+
+3. **Split the file**: If two stories produce genuinely independent functionality
+   that happens to land in the same file, split the file so each story owns its
+   output exclusively.
+
+**Do NOT** create artificial chains just to pass lint. If two stories truly need
+to modify the same file independently, that is a design problem -- fix the design.
 
 ### Feedback Generalization Protocol
 
@@ -208,7 +268,13 @@ pvg nd create "<Bug title>" \
   --priority=0 \
   --parent=<epic-id> \
   -d "## Context
-<What was discovered>
+<What was discovered and how it manifests>
+
+## Root Cause (if known)
+<Analysis of what is wrong>
+
+## Affected Components
+<Files, modules, services involved>
 
 ## Acceptance Criteria
 - [ ] <Specific criterion>
@@ -371,22 +437,33 @@ pvg nd stale --days=14               # No neglected issues
 
 7. **Acceptance criteria specific and testable?** "The API should be fast" is not
    testable. "GET /api/items responds in < 200ms for 100 items" is testable.
+   Where EARS categories sharpen intent, verify they are present -- especially
+   Unwanted (security/integrity boundaries) and State (ongoing conditions).
 
-8. **Atomic and INVEST-compliant?** If a story modifies more than 3 files, it
+8. **User Intent field present?** Feature stories should have a USER INTENT section
+   that states the underlying user need. This is what the PM-Acceptor evaluates
+   against beyond checkbox AC.
+
+9. **Atomic and INVEST-compliant?** If a story modifies more than 3 files, it
    probably needs splitting. If it touches more than 2 architectural layers, it
    definitely does.
 
-9. **Copy-paste audit?** Verify technical terms match ARCHITECTURE.md exactly
-   (see Terminology Audit above).
+10. **Copy-paste audit?** Verify technical terms match ARCHITECTURE.md exactly
+    (see Terminology Audit above).
 
-10. **No orphan stories?** Every story must have a parent epic.
+11. **No orphan stories?** Every story must have a parent epic.
 
-11. **CONSUMES includes API signatures?** Bare file paths without function signatures
-    are insufficient for ephemeral developers.
+12. **CONSUMES includes API signatures?** Every CONSUMES entry for a cross-cutting
+    module must include the actual function signature and usage pattern, not just a
+    file path. Developers are ephemeral and cannot discover APIs on their own.
+    "CONSUMES: lib/app/gateway/dlp.ex" is insufficient.
+    "CONSUMES: DLP.scan(content, direction: :outbound) -> {:ok, findings}" is correct.
 
-12. **Walking skeleton establishes ALL quality gate patterns?** The first story
-    sets the template. Verify its ACs require type specs, cross-cutting integration,
-    and config patterns.
+13. **Walking skeleton establishes ALL quality gate patterns?** The first story
+    (walking skeleton) in each epic sets the template. Verify its ACs explicitly
+    require @spec on all public functions, cross-cutting module integration where
+    applicable, config registration patterns, and test coverage patterns. If the
+    skeleton doesn't demonstrate these, every subsequent story will omit them.
 
 **If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that

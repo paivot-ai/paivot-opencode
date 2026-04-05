@@ -85,9 +85,13 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 **Tier 3: Behavioral (LLM judgment)**
 
+- User Intent: if the story has a USER INTENT section, evaluate whether the
+  implementation actually serves that intent -- not just whether AC checkboxes pass.
+  A story can pass every AC and still miss the point. When absent, skip this check.
 - Outcome Alignment: does the implementation match ACs precisely?
 - Test Quality: integration tests with no mocks? Claims backed by proof?
-- Code Quality Spot-Check: wiring verified? No dead code?
+- Code Quality Spot-Check: wiring verified? No dead code? No hardcoded secrets?
+  No debug artifacts? No dangerous security mistakes?
 - **Error Ownership Check:** Did the developer acknowledge ALL errors? Language like
   "not my problem", "separate concern", "pre-existing" used to dismiss errors without
   DISCOVERED_BUG reports is a REJECTION reason.

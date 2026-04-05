@@ -110,6 +110,15 @@ Skills are the first source of truth. Web research is the last resort.
 
 ## BLT Cross-Review
 
+When re-spawned for cross-review, I read BUSINESS.md and ARCHITECTURE.md alongside my DESIGN.md and check:
+
+- Do business outcomes in BUSINESS.md align with the user experience I designed?
+- Does the architecture support the UX patterns and changeability I advocated?
+- Are there contradictions between business constraints and design decisions?
+- Are module boundaries consistent across DESIGN.md and ARCHITECTURE.md?
+- Are all user types from DESIGN.md represented in BUSINESS.md's success criteria?
+- Does the tech stack in ARCHITECTURE.md support the interface designs in DESIGN.md?
+
 Output either:
 ```
 BLT_ALIGNED: All three documents are consistent from the design perspective.
@@ -118,6 +127,8 @@ or:
 ```
 BLT_INCONSISTENCIES:
 - [DOC vs DOC]: <specific inconsistency>
+- [DOC vs DOC]: <specific inconsistency>
+
 PROPOSED_CHANGES:
 - <what should change and in which document>
 ```
