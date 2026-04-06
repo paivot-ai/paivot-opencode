@@ -184,8 +184,8 @@ If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 ### When a Developer Agent Fails
 If a developer agent fails or returns partial output:
 1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting worktree)
-2. If NOT delivered: remove worktree, re-spawn fresh developer
-3. If delivered: proceed with PM review
+2. If NOT delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, re-spawn fresh developer
+3. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review
 4. NEVER inspect worktree internals or try to continue the agent
 
 ## Infrastructure Context (MANDATORY before first developer spawn)
@@ -545,21 +545,25 @@ the story branch is the durable record.
 2. Dispatcher creates dev worktree on story branch
 3. Developer works, commits, pushes on story branch
 4. Developer marks delivered
-5. Dispatcher removes dev worktree: `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
+5. Dispatcher removes dev worktree: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
 6. Dispatcher creates PM worktree on same story branch
-7. PM reviews, dispatcher removes PM worktree
+7. PM reviews, dispatcher removes PM worktree: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/pm-<STORY_ID>`
 8. If accepted: merge story to epic, delete story branch
 
 ### Cleanup
 
-Remove a worktree with:
+**Always prefix removal with `cd $PROJECT_ROOT &&`:**
 ```bash
-pvg worktree remove .claude/worktrees/<worktree-name>
+cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/<worktree-name>
 ```
 
-This resolves the project root from the worktree path (not CWD), runs
-`git worktree remove --force`, and prunes stale metadata. It is safe to call
-even if CWD has drifted into the worktree being removed.
+`pvg worktree remove` resolves the project root from the worktree path (not CWD),
+runs `git worktree remove --force`, and prunes stale metadata. Starting in v1.52.11,
+it also **refuses** removal if the caller's CWD is inside the target worktree --
+preventing the session-killing CWD corruption bug.
+
+The `cd $PROJECT_ROOT &&` prefix is belt-and-suspenders: it resets CWD before
+removal, and `pvg worktree remove` catches it if you forget.
 
 **Do NOT delete the story branch when removing a worktree.** The worktree is a checkout;
 the branch is the record. Story branches are deleted ONLY after merging to the epic branch.
@@ -572,40 +576,51 @@ before PM worktree can be created.
 
 OpenCode's shell CWD can silently drift into a worktree path after agent
 completion or background task resolution. If you then remove that worktree,
-your CWD becomes invalid and **every subsequent Bash command fails permanently**.
+your CWD becomes invalid and **every subsequent shell command fails permanently**.
+The session is unrecoverable -- you must ask the user to restart OpenCode.
 
-### Prevention rules
+### Defense layers
 
-1. **ALWAYS prefix worktree operations with an explicit cd to the project root:**
+1. **Layer 1 (prevention): `cd $PROJECT_ROOT &&` prefix.**
+   All worktree removal commands MUST be prefixed with an explicit cd:
    ```bash
    cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-STORY_ID
    ```
-   Do NOT rely on your CWD being correct. Always cd first.
+   This resets CWD before removal, so even if it had drifted, the shell
+   survives the deletion.
 
-2. **NEVER chain branch checkout + worktree add in one shell call:**
-   ```bash
-   # WRONG -- if checkout changes main worktree, worktree add may fail and
-   # leave you on the wrong branch:
-   git checkout -b story/X epic/Y && git worktree add .claude/worktrees/dev-X story/X
+2. **Layer 2 (guard): `pvg worktree remove` refuses CWD-inside removal.**
+   Starting in v1.52.11, `pvg worktree remove` checks whether the caller's
+   CWD is inside the target worktree. If so, it REFUSES the removal with:
+   `REFUSED: CWD "..." is inside worktree "..." -- run 'cd ...' first.`
+   This catches cases where the `cd` prefix was forgotten.
 
-   # RIGHT -- two separate shell calls:
-   git checkout -b story/X epic/Y
-   # (then in a SEPARATE call:)
-   git worktree add .claude/worktrees/dev-X story/X
-   ```
+### Additional rules
 
-3. **After any agent completes, verify CWD:**
-   ```bash
-   pwd
-   ```
-   If the output is inside `.claude/worktrees/`, reset immediately:
-   ```bash
-   cd $PROJECT_ROOT
-   ```
+- **NEVER chain branch checkout + worktree add in one shell call:**
+  ```bash
+  # WRONG -- if checkout changes main worktree, worktree add may fail and
+  # leave you on the wrong branch:
+  git checkout -b story/X epic/Y && git worktree add .claude/worktrees/dev-X story/X
 
-4. **Use `pvg worktree remove` instead of raw `git worktree remove`.**
-   `pvg worktree remove` resolves the project root from the worktree path,
-   not from CWD, so it works even if CWD has drifted.
+  # RIGHT -- two separate shell calls:
+  git checkout -b story/X epic/Y
+  # (then in a SEPARATE call:)
+  git worktree add .claude/worktrees/dev-X story/X
+  ```
+
+- **After any agent completes, verify CWD:**
+  ```bash
+  pwd
+  ```
+  If the output is inside `.claude/worktrees/`, reset immediately:
+  ```bash
+  cd $PROJECT_ROOT
+  ```
+
+- **Use `pvg worktree remove` instead of raw `git worktree remove`.**
+  `pvg worktree remove` resolves the project root from the worktree path
+  (not from CWD) and enforces the CWD guard.
 
 ### Recovery (if CWD is already invalid)
 
