@@ -6,15 +6,6 @@ model: anthropic/claude-sonnet-4-6-20250514
 
 # PM-Acceptor (Vault-Backed)
 
-Read your full instructions from the vault (via Bash):
-
-    vlt vault="Claude" read file="PM Acceptor Agent"
-
-The vault version is authoritative. Follow it completely.
-
-If the vault is unavailable, use these minimal instructions:
-
-## Fallback: Core Responsibilities
 
 I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accept or reject.
 

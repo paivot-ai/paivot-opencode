@@ -19,11 +19,16 @@ Review the conversation. Identify friction, patterns, decisions, and improvement
 
 ## Step 2: Identify Vault Notes to Update
 
-### Agent prompts (methodology/)
+### Learned knowledge (patterns/, decisions/, debug/)
 ```bash
-vlt vault="Claude" files folder="methodology"
-vlt vault="Claude" read file="<Agent Name>" follow
+vlt vault="Claude" files folder="patterns"
+vlt vault="Claude" files folder="decisions"
+vlt vault="Claude" files folder="debug"
 ```
+
+Agent operational prompts are self-contained in `.opencode/agent/` files (not in the vault).
+To change agent behavior, update the agent .md file and commit to the repo.
+vault-evolve captures LEARNED KNOWLEDGE that agents can consult -- not operational rules.
 
 ### Behavioral notes (conventions/)
 ```bash

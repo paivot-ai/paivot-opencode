@@ -188,11 +188,13 @@ test: check-deps ## Run all checks
 	done
 	@echo "OK: All agents declare a model field"
 	@echo ""
-	@echo "Checking vault loaders use vlt commands..."
-	@for agent in sr-pm developer anchor retro; do \
-		grep -q 'vlt vault="Claude" read file=' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md missing vlt read command" && exit 1); \
+	@echo "Checking agent prompts are self-contained (no vault-read for operational instructions)..."
+	@for agent in sr-pm developer anchor retro pm; do \
+		if grep -q 'Read your full instructions from the vault' .opencode/agent/paivot-$$agent.md; then \
+			echo "FAIL: paivot-$$agent.md still has vault-read loader" && exit 1; \
+		fi; \
 	done
-	@echo "OK: Vault-backed agents use dynamic vlt commands"
+	@echo "OK: Agent prompts are self-contained"
 	@echo ""
 	@echo "Checking pvg shared workflow commands are available..."
 	@pvg nd root --ensure >/dev/null || (echo "FAIL: pvg nd root --ensure failed" && exit 1)

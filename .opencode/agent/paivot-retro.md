@@ -6,15 +6,6 @@ model: anthropic/claude-sonnet-4-6-20250514
 
 # Retro (Vault-Backed)
 
-Read your full instructions from the vault (via Bash):
-
-    vlt vault="Claude" read file="Retro Agent"
-
-The vault version is authoritative. Follow it completely.
-
-If the vault is unavailable, use these minimal instructions:
-
-## Fallback: Core Responsibilities
 
 I am the Retrospective agent. Ephemeral -- spawned after a milestone epic completes.
 

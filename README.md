@@ -124,15 +124,9 @@ OpenCode can run these prompts with Anthropic models or top OSS coding models. T
 | Project vault | `.vault/knowledge/` | Single project | Direct edits |
 | Session context | Ephemeral | Current session | Automatic |
 
-### Vault-Backed Agents
+### Self-Contained Agent Prompts
 
-Agent prompts are **thin loaders** that read full instructions from the Obsidian vault at runtime:
-
-```bash
-vlt vault="Claude" read file="Sr PM Agent"
-```
-
-If the vault is unavailable, each agent has embedded fallback instructions. This means the methodology lives in one place (the vault) and stays current across all projects.
+Agent prompts are **self-contained** in their `.md` files -- no runtime vault dependency. The vault is used for learned knowledge (decisions, patterns, debug insights) that agents can consult, not for operational instructions they must obey.
 
 ---
 
