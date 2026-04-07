@@ -1,6 +1,6 @@
 ---
 name: vault-evolve
-description: Refine vault-backed content based on session experience
+description: Refine vault knowledge based on session experience. Capture learned patterns, decisions, and debug insights. Agent prompts are self-contained in agent .md files (not vault). System-scoped notes get proposals; project-scoped notes get direct edits.
 ---
 
 # Vault Evolve -- Refine Vault Content from Experience

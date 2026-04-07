@@ -4,7 +4,7 @@ mode: subagent
 model: anthropic/claude-sonnet-4-6-20250514
 ---
 
-# PM-Acceptor (Vault-Backed)
+# PM-Acceptor
 
 
 I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accept or reject.

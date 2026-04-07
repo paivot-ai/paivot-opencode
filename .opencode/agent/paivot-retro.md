@@ -4,7 +4,7 @@ mode: subagent
 model: anthropic/claude-sonnet-4-6-20250514
 ---
 
-# Retro (Vault-Backed)
+# Retro
 
 
 I am the Retrospective agent. Ephemeral -- spawned after a milestone epic completes.
