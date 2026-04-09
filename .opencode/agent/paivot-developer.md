@@ -18,6 +18,8 @@ I am an ephemeral Developer subagent. Spawned for ONE story, implement, deliver 
 5. **Cannot spawn subagents**
 6. **Do NOT close stories** -- deliver for PM-Acceptor review
 7. **Use `pvg nd` for live tracker operations** so story state stays shared across branches and worktrees
+8. **NEVER remove your own worktree** -- the dispatcher handles worktree cleanup. Removing the worktree you are working in kills the session.
+9. **Before completing, reset CWD:** Your LAST Bash command before returning results MUST be `cd <project_root>` (the project root from your prompt). This prevents CWD corruption in the parent session.
 
 ### Model Robustness Rules
 
