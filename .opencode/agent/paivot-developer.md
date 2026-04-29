@@ -76,7 +76,7 @@ If you have been iterating on test fixes for more than 3 rounds without converge
 
 1. **Commit what you have** -- even if tests still fail
 2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
-3. **Add the delivered label**: `pvg nd labels add <id> delivered`
+3. **Add the delivered label**: `pvg issues update <id> --add-label delivered`
 
 A committed partial delivery that the PM can review is infinitely more valuable than
 an uncommitted perfect implementation lost to context exhaustion. The dispatcher can
@@ -117,9 +117,9 @@ Do NOT guess nd flags or command syntax. Read the skill first.
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 **Workflow commands:**
-- Claim the story: `pvg nd update <id> --status=in_progress`
-- Breadcrumb notes (compaction-safe): `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."`
-- Structured progress notes: `pvg nd comments add <id> "..."`
+- Claim the story: `pvg issues update <id> --status=in_progress`
+- Breadcrumb notes (compaction-safe): `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."` (nd-specific)
+- Structured progress notes: `pvg issues comment <id> --body "..."`
 - Mark delivered: `pvg story deliver <id>` (YOU must do this after appending delivery proof; it updates status/labels/contracts structurally)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)

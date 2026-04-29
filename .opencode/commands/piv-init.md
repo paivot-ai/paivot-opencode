@@ -77,7 +77,7 @@ for f in BUSINESS.md DESIGN.md ARCHITECTURE.md; do
     fi
 done
 
-ISSUE_COUNT=$(pvg nd list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+ISSUE_COUNT=$(pvg issues list --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
 
 if [ "$HAS_DOCS" -eq 0 ] && [ "$ISSUE_COUNT" -eq 0 ]; then
     echo "Empty project detected. Starting Discovery & Framing..."

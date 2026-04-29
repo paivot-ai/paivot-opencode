@@ -256,11 +256,10 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 4. Create the bug with FULL structure:
 
 ```bash
-pvg nd create "<Bug title>" \
-  --type=bug \
-  --priority=0 \
+# Note: --type=bug and --priority=0 dropped (no provider-abstracted equivalent yet)
+pvg issues create "<Bug title>" \
   --parent=<epic-id> \
-  -d "## Context
+  --body "## Context
 <What was discovered and how it manifests>
 
 ## Root Cause (if known)
@@ -297,13 +296,14 @@ Do NOT guess nd flags or command syntax. Read the skill first.
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 **Key workflow commands:**
-- Create epic: `pvg nd create "Epic title" --type=epic --priority=1`
-- Create story: `pvg nd create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"`
-- Create bug (ONLY via Bug Triage Mode): `pvg nd create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"`
-- Add dependencies: `pvg nd dep add <story-id> <blocker-id>`
-- Verify structure: `pvg nd epic tree <epic-id>`
-- Detect dependency cycles: `pvg nd dep cycles`
-- Check epic readiness: `pvg nd epic close-eligible`
+(Note: --type and --priority flags dropped on creates -- no provider-abstracted equivalent yet)
+- Create epic: `pvg issues create "Epic title"`
+- Create story: `pvg issues create "Story title" --parent=<epic-id> --body "full description"`
+- Create bug (ONLY via Bug Triage Mode): `pvg issues create "Bug title" --parent=<epic-id> --body "full description"`
+- Add dependencies: `pvg nd dep add <story-id> <blocker-id>` (nd-specific arg-order)
+- Verify structure: `pvg nd epic tree <epic-id>` (nd-specific)
+- Detect dependency cycles: `pvg nd dep cycles` (nd-specific)
+- Check epic readiness: `pvg nd epic close-eligible` (nd-specific)
 
 ### Branch-per-Epic
 

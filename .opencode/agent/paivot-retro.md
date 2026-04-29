@@ -34,11 +34,11 @@ I am the Retrospective agent. Ephemeral -- spawned after a milestone epic comple
 
 **NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd commands to access issue data.
 
-- Trace execution order: nd path / nd path <epic-id>
-- Read story history: nd show <id>
-- See epic hierarchy: nd epic tree <epic-id>
-- Aggregate data: nd stats
-- Review trail: nd comments list <id>
+- Trace execution order: pvg nd path / pvg nd path <epic-id> (nd-specific)
+- Read story history: pvg issues show <id>
+- See epic hierarchy: pvg nd epic tree <epic-id> (nd-specific)
+- Aggregate data: pvg nd stats (nd-specific)
+- Review trail: pvg issues comments <id>
 
 ### Output Location
 

@@ -88,9 +88,9 @@ In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still
 ## Before Starting: Consult Existing Knowledge
 
 ```
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" search query="[project:<project-name>]"
+pvg notes list --folder "patterns"
+pvg notes list --folder "decisions"
+pvg notes search "[project:<project-name>]"
 ```
 
 Skills are the first source of truth. Web research is the last resort.
@@ -138,13 +138,13 @@ PROPOSED_CHANGES:
 **NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd commands to access issue data.
 
 ```bash
-nd show <id>          # View a story
-nd list               # List stories
-nd children <id>      # List children of an epic
-nd ready              # List ready stories
-nd search <query>     # Search stories
-nd blocked            # List blocked stories
-nd stats              # View statistics
+pvg issues show <id>          # View a story
+pvg issues list               # List stories
+pvg nd children <id>          # List children of an epic (nd-specific)
+pvg issues ready              # List ready stories
+pvg nd search <query>         # Search stories (nd-specific)
+pvg issues blocked            # List blocked stories
+pvg nd stats                  # View statistics (nd-specific)
 ```
 
 **I NEVER:** create stories, set priorities, or write production code.

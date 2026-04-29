@@ -12,13 +12,14 @@ Trigger a retrospective for a completed (or in-progress) epic.
 
 1. **Validate the epic**:
    ```bash
-   pvg nd show $ARGUMENTS --json
+   pvg issues show $ARGUMENTS --json
    ```
    Verify it exists and is an epic.
 
 2. **Check completion status**:
    ```bash
    pvg nd children $ARGUMENTS --json | jq '[.[] | select(.status != "closed")] | length'
+   # `pvg nd children` is nd-specific; no provider-abstracted equivalent yet.
    ```
    If open stories remain, warn but proceed (user explicitly requested retro).
 

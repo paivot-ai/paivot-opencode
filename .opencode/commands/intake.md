@@ -26,8 +26,10 @@ Before spawning the Sr. PM agent, YOU must gather context and pass it in the pro
 ### 2a. Fetch vault knowledge
 
 ```bash
-vlt vault="Claude" read file="Session Operating Mode" follow
-vlt vault="Claude" read file="<project-name>" follow
+pvg notes read "Session Operating Mode"
+pvg notes read "<project-name>"
+# TODO: pvg notes addresses by full path; if these are not at vault root use the
+# full path. The `follow` semantic has no pvg equivalent yet -- fall back to vlt.
 ```
 
 ### 2b. Detect the project's tech stack
