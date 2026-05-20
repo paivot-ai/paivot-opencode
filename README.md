@@ -140,6 +140,9 @@ Agent prompts are **self-contained** in their `.md` files -- no runtime vault de
 | `@paivot-architect` | Opus | Designs system architecture, owns ARCHITECTURE.md |
 | `@paivot-designer` | Opus | Captures user needs for all product types, owns DESIGN.md |
 | `@paivot-business-analyst` | Opus | Iterative business discovery, owns BUSINESS.md |
+| `@paivot-ba-challenger` | Sonnet | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-designer-challenger` | Sonnet | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-architect-challenger` | Sonnet | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
 | `@paivot-anchor` | Opus | Adversarial reviewer -- backlogs and milestones |
 | `@paivot-retro` | Sonnet | Harvests learnings from completed epics |
 
@@ -191,6 +194,18 @@ Use the smallest escape hatch that solves the problem:
 | Remove Paivot from a project | `make uninstall TARGET=/path/to/project` | Removes `.opencode/`, `opencode.json`, and `AGENTS.md` from that project |
 
 Your nd backlog and vault notes remain on disk. Cancelling a loop, recovering state, or uninstalling the OpenCode integration does not delete your work.
+
+---
+
+## Convention: Paivot projects do not use a project-level `CLAUDE.md`
+
+A Paivot-managed project (any directory containing `.vault/issues/` or `.paivot/config.yaml`) deliberately has **no** project-level `CLAUDE.md`. The methodology lives in the host repo's `AGENTS.md` (paivot-opencode is one such host); project-specific hard rules live as `scope: project` notes under `.vault/knowledge/conventions/`. A parallel `CLAUDE.md` would create two competing sources and rule duplication.
+
+If you want to record a project-specific hard rule (e.g., "no skip-if-missing integration tests", "all migrations must be reversible"), write it as a `scope: project` note under `.vault/knowledge/conventions/`. The Sr PM's Phase 1 hard-rule ingestion (in `@paivot-sr-pm`) reads those notes automatically -- alongside the project `AGENTS.md` and your user global `~/.claude/CLAUDE.md` -- and feeds them into the Anchor's Master Checklist quality gates.
+
+Recommended one-liner to add to your user global `~/.claude/CLAUDE.md` so any session in any directory honors this convention:
+
+> **Paivot project detection.** If the working directory or any ancestor contains `.vault/issues/` or `.paivot/config.yaml`, treat it as a Paivot-managed project: do not create or expect a project-level `CLAUDE.md`. Project-specific conventions live under `.vault/knowledge/conventions/`; methodology lives in the Paivot vault and in the host repo's `AGENTS.md`; workflow is governed by the agent prompts (paivot-graph for Claude Code, paivot-codex for Codex, paivot-opencode for OpenCode). Hard rules that would normally live in a project `CLAUDE.md` belong as `scope: project` vault notes instead.
 
 ---
 
