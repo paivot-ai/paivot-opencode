@@ -21,9 +21,9 @@ Review the conversation. Identify friction, patterns, decisions, and improvement
 
 ### Learned knowledge (patterns/, decisions/, debug/)
 ```bash
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="debug"
+pvg notes list --folder "patterns"
+pvg notes list --folder "decisions"
+pvg notes list --folder "debug"
 ```
 
 Agent operational prompts are self-contained in `.opencode/agent/` files (not in the vault).
@@ -32,12 +32,15 @@ vault-evolve captures LEARNED KNOWLEDGE that agents can consult -- not operation
 
 ### Behavioral notes (conventions/)
 ```bash
-vlt vault="Claude" read file="Session Operating Mode" follow
+pvg notes read "Session Operating Mode"
+# TODO: pvg notes addresses by full path; if not at vault root use the full path.
+# `follow` semantic has no pvg equivalent yet -- fall back to vlt for that.
 ```
 
 ### Project-local knowledge (.vault/knowledge/)
 ```bash
 vlt vault=".vault/knowledge" files
+# Project-local vault still uses vlt directly; pvg notes addresses the configured vault only.
 ```
 
 ## Step 3: Determine Scope and Apply
@@ -45,7 +48,7 @@ vlt vault=".vault/knowledge" files
 ### If `scope: system`:
 Create a proposal in `_inbox/`:
 ```bash
-vlt vault="Claude" create name="Proposal -- <Target Note>" path="_inbox/Proposal -- <Target Note>.md" content="---
+pvg notes create "_inbox/Proposal -- <Target Note>.md" --title "Proposal -- <Target Note>" --body "---
 type: proposal
 scope: system
 target: \"<target note path>\"
@@ -67,7 +70,8 @@ created: <YYYY-MM-DD>
 <proposed replacement>
 
 ## Snapshot (for rollback)
-<full current content>" silent
+<full current content>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ### If `scope: project`:

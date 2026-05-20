@@ -56,7 +56,7 @@ Show the current state and health of both the global Obsidian vault and the proj
 
 5. **Check for pending proposals**:
    ```bash
-   vlt vault="Claude" search query="type: proposal"
+   pvg notes search "type: proposal"
    ```
 
 6. **Present the report** as a formatted table with counts per folder, health metrics,

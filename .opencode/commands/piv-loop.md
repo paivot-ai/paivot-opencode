@@ -69,13 +69,13 @@ This returns a JSON decision. Follow it:
 | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
 
 **`pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch decisions.**
-Do NOT query nd directly with `pvg nd ready --json` or `pvg nd list --json` for choosing
-what to work on next. Those queries are unscoped and will return stories from ALL epics,
-breaking containment.
+Do NOT query the tracker directly with `pvg issues ready --json` or `pvg issues list --json`
+for choosing what to work on next. Those queries are unscoped and will return stories from
+ALL epics, breaking containment.
 
-You MAY use nd directly for:
-- Reading story content before spawning a developer (`pvg nd show STORY_ID`)
-- Checking story labels (`pvg nd show STORY_ID --json`)
+You MAY use the issues CLI directly for:
+- Reading story content before spawning a developer (`pvg issues show STORY_ID`)
+- Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
@@ -183,7 +183,7 @@ If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 
 ### When a Developer Agent Fails
 If a developer agent fails or returns partial output:
-1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting worktree)
+1. Check story status via `pvg issues show <STORY_ID> --json` (NOT by inspecting worktree)
 2. If NOT delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, re-spawn fresh developer
 3. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review
 4. NEVER inspect worktree internals or try to continue the agent
@@ -335,7 +335,7 @@ fails, escalate to user.
 **Merge order:** If multiple stories are waiting to merge, process them in
 dependency order first, then priority order (P0 first) within each ready layer.
 Do NOT use `parent` for merge ordering: `parent` is epic containment, not the
-dependency graph. Use `pvg nd dep tree STORY_ID` and `pvg nd show STORY_ID --json`
+dependency graph. Use `pvg nd dep tree STORY_ID` (nd-specific) and `pvg issues show STORY_ID --json`
 to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories
 before dependents.
 
@@ -435,7 +435,7 @@ git branch -D epic/EPIC_ID
 
 **After** branch cleanup succeeds, close the epic in nd:
 ```bash
-pvg nd update EPIC_ID --status closed --add-label accepted
+pvg issues update EPIC_ID --status closed --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete

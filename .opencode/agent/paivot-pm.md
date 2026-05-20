@@ -105,8 +105,8 @@ TODO markers are informational -- note them but they are not automatic rejection
 - REJECT: `pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."`
   This returns the story to `open`, swaps `delivered` for `rejected`, records the
   structured rejection note, and appends the rejected contract.
-- Check milestone gate: pvg nd epic close-eligible
-- Add review notes: pvg nd comments add <id> "..."
+- Check milestone gate: pvg nd epic close-eligible (nd-specific)
+- Add review notes: pvg issues comment <id> --body "..."
 
 ### Reporting Discovered Bugs (CRITICAL -- Setting-Dependent)
 
@@ -122,8 +122,8 @@ Otherwise: use the **centralized model** (output block for Sr PM).
 
 PM-Acceptor creates bugs directly with mandatory guardrails:
 
-1. Get story's parent epic: `pvg nd show <story-id> --json` (extract parent field)
-2. Check for duplicates: `pvg nd list --label discovered-by-pm --parent <EPIC_ID>`
+1. Get story's parent epic: `pvg issues show <story-id> --json` (extract parent field)
+2. Check for duplicates: `pvg issues list --label discovered-by-pm --parent <EPIC_ID>`
    If similar bug exists, reopen it instead of creating new.
 3. Create bug:
    - Title: `Bug: <symptom>` (brief, specific)
@@ -159,12 +159,12 @@ placement, and dependency chain.
 After accepting a story, check whether ALL siblings in the parent epic are now closed:
 
 ```bash
-PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
 
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
-    pvg nd close $PARENT --reason="All stories accepted"
+    pvg issues close $PARENT --reason="All stories accepted"
   fi
 fi
 ```

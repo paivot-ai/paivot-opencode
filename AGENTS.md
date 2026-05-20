@@ -51,13 +51,13 @@ For nd-backed execution, the live backlog must be branch-independent.
 ### Dispatcher Queries
 
 **`pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch decisions.**
-Do NOT query nd directly with `pvg nd ready --json` or `pvg nd list --json` for choosing
-what to work on next. Those queries are unscoped and will return stories from ALL epics,
-breaking containment.
+Do NOT query the tracker directly with `pvg issues ready --json` or `pvg issues list --json`
+for choosing what to work on next. Those queries are unscoped and will return stories from
+ALL epics, breaking containment.
 
-You MAY use `pvg nd` directly for:
-- Reading story content before spawning a developer (`pvg nd show STORY_ID`)
-- Checking story labels (`pvg nd show STORY_ID --json`)
+You MAY use `pvg issues` directly for:
+- Reading story content before spawning a developer (`pvg issues show STORY_ID`)
+- Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
@@ -353,8 +353,8 @@ The loop drains one epic at a time. It stops when:
 
 **Story lifecycle (Developer):**
 ```bash
-pvg nd update <id> --status=in_progress          # Claim story
-pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb
+pvg issues update <id> --status=in_progress      # Claim story
+pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb (nd-specific)
 pvg story deliver <id>                           # Mark delivered structurally after delivery notes are written
 ```
 
@@ -366,17 +366,18 @@ pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ...
 
 **Backlog management (Sr PM):**
 ```bash
-pvg nd create "Title" --type=epic --priority=1    # Create epic
-pvg nd create "Title" --type=task --priority=<P> --parent=<epic-id> -d "description"  # Create story
-pvg nd create "Title" --type=bug --priority=0 --parent=<epic-id> -d "description"  # Create bug
-pvg nd dep add <story-id> <blocker-id>            # Add dependency
-pvg nd dep relate <story-id> <related-id>         # Soft-link
-pvg nd children <epic-id> --json                  # List stories in epic
-pvg nd dep cycles                                 # Detect dependency cycles
-pvg nd epic close-eligible                        # Check epic readiness
+# Note: --type and --priority are dropped (no provider-abstracted equivalent yet)
+pvg issues create "Title"                                                    # Create epic
+pvg issues create "Title" --parent=<epic-id> --body "description"            # Create story
+pvg issues create "Title" --parent=<epic-id> --body "description"            # Create bug
+pvg nd dep add <story-id> <blocker-id>            # Add dependency (nd-specific arg-order)
+pvg nd dep relate <story-id> <related-id>         # Soft-link (nd-specific)
+pvg nd children <epic-id> --json                  # List stories in epic (nd-specific)
+pvg nd dep cycles                                 # Detect dependency cycles (nd-specific)
+pvg nd epic close-eligible                        # Check epic readiness (nd-specific)
 ```
 
-**Diagnostics:**
+**Diagnostics (all nd-specific):**
 ```bash
 pvg nd graph                                            # Dependency DAG (entire backlog)
 pvg nd graph <epic-id>                                  # Dependency DAG (one epic)
