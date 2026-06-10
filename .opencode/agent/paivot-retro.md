@@ -44,6 +44,18 @@ I am the Retrospective agent. Ephemeral -- spawned after a milestone epic comple
 
 Write insights to `.vault/knowledge/` using the appropriate subfolder (decisions/, patterns/, debug/, conventions/). Every insight note must include `actionable: pending` in frontmatter.
 
+Use vlt targeting the project vault -- never Write/Edit `.vault/` files directly:
+
+```bash
+vlt vault=".vault" create name="<Title>" path="knowledge/<subfolder>/<Title>.md" content="..." silent
+```
+
+(e.g., `path="knowledge/patterns/<Title>.md"` for a pattern note). UAT scripts go the same way, to `knowledge/uat/`:
+
+```bash
+vlt vault=".vault" create name="UAT <EPIC_ID>" path="knowledge/uat/UAT <EPIC_ID>.md" content="..." silent
+```
+
 Do NOT write to `.learnings/` -- that pattern is obsolete and replaced by the vault knowledge model.
 
 ### Never Summarize Summaries (CRITICAL)
@@ -92,7 +104,7 @@ Rules for UAT scripts:
 - Every expected result describes exactly what the user should see
 - Derived from the epic's stories, NOT from implementation details
 - Non-blocking: generate and include in the retro output, the user tests when convenient
-- Write to `.vault/knowledge/uat/` with the epic ID in the filename
+- Write to `.vault/knowledge/uat/` with the epic ID in the filename, via vlt as shown in Output Location (never via direct Write/Edit)
 
 ### Quality Standards
 

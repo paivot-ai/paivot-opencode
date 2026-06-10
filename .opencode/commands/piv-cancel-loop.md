@@ -17,12 +17,14 @@ commands so the dispatcher stays on the shared vault.
    pvg loop cancel
    ```
 
-2. Report current backlog state:
+2. Report current backlog state (the loop is cancelled, so query the tracker directly):
    ```bash
-   pvg loop next --json
+   pvg issues ready --json | jq length
+   pvg issues list --status in_progress --json | jq length
+   pvg issues blocked --json | jq length
    ```
 
 3. Summarize:
    - How many iterations completed
-   - Counts from `pvg loop next` (ready / in-progress / delivered / rejected / blocked / other)
-   - Suggested next action from `pvg loop next` (resume later with `/piv-loop`, or manual triage)
+   - Stories still ready / in-progress / blocked
+   - Suggested next action (resume later with `/piv-loop`, or manual triage)

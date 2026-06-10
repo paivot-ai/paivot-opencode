@@ -73,6 +73,22 @@ Do NOT query the tracker directly with `pvg issues ready --json` or `pvg issues 
 for choosing what to work on next. Those queries are unscoped and will return stories from
 ALL epics, breaking containment.
 
+### Wave Dispatch (multiple ready stories)
+
+When the current epic has multiple ready stories and the concurrency limit allows
+k more developers, request a wave instead of looping one action at a time:
+
+```bash
+pvg loop next --json --n k
+```
+
+This returns up to k distinct actions in an `actions` array (at most one
+pm_review per wave, then developers from the rejected/ready queues). The `next`
+field still carries the first action. Spawn one developer per entry in
+`actions[]` -- each gets its own story branch and dispatcher-managed worktree
+exactly as described under Story Branch Setup. The single-source-of-truth rule
+is unchanged: the wave comes from `pvg loop next`, never from unscoped nd queries.
+
 You MAY use the issues CLI directly for:
 - Reading story content before spawning a developer (`pvg issues show STORY_ID`)
 - Checking story labels (`pvg issues show STORY_ID --json`)
@@ -433,13 +449,32 @@ git push origin --delete epic/EPIC_ID
 git branch -D epic/EPIC_ID
 ```
 
-**After** branch cleanup succeeds, close the epic in nd:
+**After** branch cleanup succeeds, close the epic in nd. The label contract
+requires the epic to be closed BEFORE the `accepted` label is added -- two
+canonical steps, in this order:
 ```bash
-pvg issues update EPIC_ID --status closed --add-label accepted
+pvg issues close EPIC_ID --reason="All stories accepted, gate passed"
+pvg issues update EPIC_ID --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
 errors, parallel calls may be cancelled -- losing the nd update.
+
+**Then snapshot the backlog for git durability.** The live nd vault lives under
+git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
+tracked snapshot. Run it on main after every epic merge and commit the result:
+
+```bash
+pvg nd sync
+git add .vault/backlog-snapshot
+git commit -m "chore(paivot): backlog snapshot after EPIC_ID"
+git push origin main
+```
+
+(`pvg nd restore` re-imports the snapshot into an empty live vault after a
+fresh clone.) `.vault/knowledge/` and `.vault/backlog-snapshot/` are the ONLY
+tracked paths under `.vault/`, and they are committed only by you -- the
+dispatcher, on main. Agents never stage anything under `.vault/`.
 
 Then clean up all story branches for this epic:
 
@@ -487,12 +522,23 @@ Epic: EPIC_ID
 The retro agent is ephemeral -- it runs, captures knowledge, and is disposed.
 Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
 
+**After retro completes**, commit any new `.vault/knowledge/` files it produced
+to main. Knowledge notes are tracked; runtime state under `.vault/` (issues,
+locks) remains gitignored. Agents never commit `.vault/` files -- this commit
+is the dispatcher's job, on main:
+
+```bash
+git add .vault/knowledge
+git commit -m "chore(paivot): retro knowledge for EPIC_ID"
+git push origin main
+```
+
 **After retro**: if `epic_complete` included a `next_epic`, run
 `pvg loop rotate <next_epic>` to transition the loop state, then resume
 with `pvg loop next --json`. If no `next_epic` was provided (last epic),
 the completion gate is still MANDATORY -- run all four steps (e2e, Anchor,
-merge to main, retro) before allowing exit. The stop hook enforces this
-structurally: it blocks exit while the epic branch exists unmerged.
+merge to main, retro) before allowing exit. Nothing enforces this for you
+in OpenCode (no stop hook): do NOT exit while the epic branch exists unmerged.
 
 ## Termination
 
@@ -509,7 +555,7 @@ decisions:
 | Current epic has actionable work (`act`) | Continue |
 | Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
 | Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
-| Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
+| Epic branch exists but all stories closed | Block exit, run completion gate (prompt-level mandate -- OpenCode has no stop hook to catch you) |
 
 ### Live Demo (before session exit)
 

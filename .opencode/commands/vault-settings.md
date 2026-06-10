@@ -33,8 +33,24 @@ workflow.sequence: open,in_progress,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: rejected
 architecture.c4: false
-loop.persist_across_sessions: false
+loop.persist_across_sessions: true
+lint.quality_gates:
+lint.brownfield: false
 ```
+
+Notes on selected settings:
+
+- `loop.persist_across_sessions` (default `true`): the execution loop survives
+  session boundaries -- agent completions resume it where it left off. Set
+  `false` to clear loop state when the session exits, even if work remains.
+- `lint.quality_gates`: extra quality-gate patterns (pipe-separated) that the
+  `walking-skeleton` check of `pvg lint --backlog` requires in every skeleton's
+  AC, on top of its generic defaults. Populated by the Sr PM from the project
+  hard rules extracted during Phase 1 ingestion.
+  Example: `"no.skip.if.missing|no mocks? in integration|always TDD"`
+- `lint.brownfield` (default `false`): force the `paths-exist` lint check on,
+  regardless of the >50-commits heuristic. The check verifies every path
+  referenced in a story body exists on disk or in a PRODUCES block.
 
 ## Step 2: Present Current Configuration
 

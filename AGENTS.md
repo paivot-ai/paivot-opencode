@@ -46,7 +46,13 @@ For nd-backed execution, the live backlog must be branch-independent.
 - Resolve the live nd vault from the repository's git common dir
 - Use `pvg nd ...` for live tracker operations
 - Do not treat branch-local `.vault/issues/` as canonical state when multiple worktrees or branches are active
-- Use explicit archives or exports if you want a git artifact of the backlog
+
+**Durability.** The live vault is not part of git history -- a fresh clone does
+not contain it. `pvg nd sync` exports it into a tracked snapshot at
+`.vault/backlog-snapshot/`; the dispatcher runs it at each epic completion gate
+and commits the snapshot on main. `pvg nd restore` re-imports the snapshot into
+an empty live vault after a fresh clone. The snapshot is an export, never the
+live queue.
 
 ### Dispatcher Queries
 
@@ -254,16 +260,18 @@ omissions, hallucinations, and drift before they cascade downstream.
 
 ### Post-D&F
 
-Pipeline: **Sr PM generates backlog -> pvg rtm check + pvg lint -> Anchor reviews**
+Pipeline: **Sr PM generates backlog -> pvg rtm check + pvg lint --backlog -> Anchor reviews**
 
 1. Spawn `@paivot-sr-pm` to create backlog from D&F documents
 2. Sr PM runs structural gates before submitting:
    ```bash
-   pvg rtm check    # Verify all tagged D&F requirements have covering stories
-   pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+   pvg rtm check        # Verify all tagged D&F requirements have covering stories
+   pvg lint --backlog   # Full backlog structure checks (collisions, skeletons, capstones, CONSUMES contracts, ...)
    ```
-   Both must pass. Sr PM fixes any failures before proceeding.
-3. Spawn `@paivot-anchor` for adversarial backlog review
+   Both must pass: `pvg lint --backlog` must exit clean of `error` findings, and
+   every unfixed `review` finding needs a one-line justification in the submission summary.
+3. Spawn `@paivot-anchor` for adversarial backlog review (the Anchor re-runs
+   `pvg lint --backlog` as its Step 0 and auto-rejects on any `error` finding)
 4. If REJECTED: Sr PM applies Feedback Generalization Protocol (sweep general rules, not just named instances), fixes, re-runs structural gates, Anchor re-reviews (max 3 rounds)
 5. If APPROVED: proceed to execution
 
@@ -338,7 +346,9 @@ those stories.
 ### Epic Auto-Close
 
 After PM-Acceptor accepts a story, it checks if all siblings in the parent epic are
-closed. If so, it closes the epic.
+closed. If so, it closes the epic with the canonical two-step (the label contract
+requires closed BEFORE accepted): `pvg issues close <epic-id> --reason="..."`, then
+`pvg issues update <epic-id> --add-label accepted`.
 
 ### Termination
 

@@ -127,7 +127,7 @@ Use `pvg nd` (not bare `nd`) for all live tracker operations.
 ### Git Hygiene (CRITICAL)
 
 - NEVER `git add .` or `git add -A` -- always add specific files by name
-- NEVER commit `.vault/` files (issues, state, lock files) -- they are runtime state, not code
+- NEVER stage anything under `.vault/`. Specifically: never commit `.vault/issues/`, lock files, or runtime state. `.vault/knowledge/` and `.vault/backlog-snapshot/` are tracked, but they are committed ONLY by the dispatcher on main -- not by you
 - Commit to your STORY branch only -- never push to epic or main directly
 - Keep story branch up to date: `git fetch origin && git rebase origin/main && git push --force-with-lease`
 

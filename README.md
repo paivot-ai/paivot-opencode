@@ -95,6 +95,12 @@ For multi-branch execution, the mutable nd backlog must be branch-independent.
 Use a shared nd vault resolved from the repository's git common dir rather than
 branch-local `.vault/issues/` copies.
 
+The shared live vault is not part of git history, so durability comes from
+snapshots: at each epic completion gate the dispatcher runs `pvg nd sync` to
+export the backlog into a tracked `.vault/backlog-snapshot/` and commits it on
+main. After a fresh clone, `pvg nd restore` re-imports the snapshot into an
+empty live vault.
+
 Paivot standardizes on `pvg nd` so shared-backlog routing is structural rather than remembered.
 Use it instead of bare `nd` whenever you are querying or mutating the live backlog.
 
@@ -159,6 +165,9 @@ The execution loop (`/piv-loop`) drives stories through development, review, and
 3. **Merge to main** -- depends on `workflow.solo_dev` setting:
    - `true` (default): merge directly to main, push, delete epic and story branches
    - `false`: create a PR for team review
+4. **Snapshot + retro** -- the dispatcher exports the backlog (`pvg nd sync`) and
+   commits `.vault/backlog-snapshot/` on main, then spawns the retro agent and
+   commits its `.vault/knowledge/` notes.
 
 Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
 
