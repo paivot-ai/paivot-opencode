@@ -57,7 +57,9 @@ Each iteration, run:
 pvg loop next --json
 ```
 
-This returns a JSON decision. Follow it:
+This returns a JSON decision. On actions, `priority` is the STORY's nd
+priority (0 = P0); queue precedence is the `queue` field (delivered >
+rejected > ready). Follow it:
 
 | Decision | Action |
 |----------|--------|
@@ -197,12 +199,28 @@ You are a dispatcher. You coordinate agents. You NEVER:
 
 If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 
-### When a Developer Agent Fails
-If a developer agent fails or returns partial output:
-1. Check story status via `pvg issues show <STORY_ID> --json` (NOT by inspecting worktree)
-2. If NOT delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, re-spawn fresh developer
-3. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review
-4. NEVER inspect worktree internals or try to continue the agent
+### When a Developer Agent Fails or Completes (Abandonment Detection)
+
+An agent "completed" signal does NOT mean the work finished. An ephemeral
+agent that backgrounds a long build (or otherwise ends its turn to "wait")
+is silently disposed -- typically minutes in, with intact but uncommitted
+work. On EVERY developer completion or failure:
+
+1. Check for a terminal outcome: `delivered` label (`pvg nd show <STORY_ID>`),
+   or an explicit report in the agent output (ALREADY_LANDED, DISCOVERED_BUG,
+   CONTEXT_BUDGET note). NOT by inspecting worktree internals.
+2. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review.
+3. If NOT delivered but the story branch HAS new commits: spawn a
+   deliver-only follow-up (verify + `pvg story deliver`) -- cheap on a warm
+   build. Do not discard committed work.
+4. If NOT delivered and NO new commits: the agent abandoned.
+   `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`,
+   re-spawn a fresh developer with explicit instructions: fully synchronous
+   execution, explicit timeouts, COMMIT before any long verification.
+5. NEVER try to continue or resume the dead agent.
+
+PM completions: verify the decision actually landed (`pvg nd show <id>` must
+show closed+accepted, rejected, or red-approved) before acting on it.
 
 ## Infrastructure Context (MANDATORY before first developer spawn)
 
@@ -279,25 +297,44 @@ The developer receives everything needed to implement WITHOUT searching the code
 When a story is selected for development, the dispatcher creates the story branch
 from the epic branch (two-level model: `main -> epic -> story`):
 
+Branch creation is NON-SWITCHING (`git branch`, never `git checkout -b`):
+the dispatcher's HEAD stays on main, and a checked-out story branch would
+also block the `git worktree add` that follows. OpenCode has no PreToolUse
+guard to catch a story checkout at the root -- the discipline is entirely
+yours.
+
 ```bash
 # Ensure epic branch exists (create if needed)
 git fetch origin
 if ! git rev-parse --verify origin/epic/EPIC_ID >/dev/null 2>&1; then
-  git checkout -b epic/EPIC_ID origin/main
+  git branch epic/EPIC_ID origin/main
   git push -u origin epic/EPIC_ID
 fi
 
-# Create story branch from epic
-git checkout -b story/STORY_ID origin/epic/EPIC_ID
+# Create story branch from epic (no HEAD switch)
+git branch story/STORY_ID origin/epic/EPIC_ID
 git push -u origin story/STORY_ID
 ```
 
-Then create a worktree for the developer on the story branch:
+Then CLAIM the story and create a worktree for the developer:
 ```bash
+pvg story claim STORY_ID    # status -> in_progress; MANDATORY before spawning
 git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
 
-The developer prompt MUST include the worktree path.
+**Claiming at dispatch is not optional.** Until the story leaves the ready
+queue, `pvg loop next` keeps offering it -- in wave dispatch that means
+duplicate developers on the same story. Claim the moment you decide to
+spawn, for EVERY developer including each entry of a wave.
+
+The developer prompt MUST include the worktree path, and MUST state: run
+everything synchronously with explicit timeouts (never background a build
+and end your turn -- an ephemeral agent is disposed, not re-invoked), commit
+work to the story branch before long verification runs, prefix every shell
+command with `cd <worktree-absolute-path> &&` (CWD does not reliably persist
+between calls), and for docker-compose projects pin
+`COMPOSE_PROJECT_NAME=dev-STORY_ID` so concurrent agents never share
+containers or build volumes.
 
 **CRITICAL: Never use auto-isolation that creates disconnected branches.**
 Commits on orphan branches are lost on cleanup. Always create worktrees manually
@@ -310,19 +347,46 @@ for the selected story.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 
-**If `hard-tdd` label is PRESENT**: run the two-phase flow:
-1. RED phase: spawn developer with "RED PHASE" in the prompt (tests only)
-2. PM-Acceptor reviews tests
-3. GREEN phase: spawn developer with "GREEN PHASE" in the prompt (implementation only)
-4. PM-Acceptor reviews implementation
+**If `hard-tdd` label is PRESENT**: run the two-phase flow. The phase is
+tracked in nd by the `red-approved` label and carried on every loop action
+as `phase` ("red" or "green") -- trust the loop output, do not infer:
+
+1. RED phase: `pvg loop next` returns `developer_new` with `"phase":"red"`.
+   Spawn developer with "RED PHASE" in the prompt (tests only). Developer
+   delivers via `pvg story deliver`.
+2. RED review: the loop returns `pm_review` with `"phase":"red"`. The PM
+   validates the tests are properly RED and approves with
+   `pvg story approve-red STORY_ID` -- this removes `delivered`, adds
+   `red-approved`, and returns the story to the ready queue. A RED story is
+   NEVER closed or labeled `accepted`.
+3. GREEN phase: the loop returns `developer_new` with `"phase":"green"`
+   (same story, now labeled `red-approved`). Spawn developer with
+   "GREEN PHASE" in the prompt (implementation only; RED tests untouched).
+4. GREEN review: the loop returns `pm_review` with `"phase":"green"`.
+   Standard acceptance applies (`pvg story accept`).
+
+A rejected story keeps its `red-approved` label, so rework actions carry
+the correct phase automatically.
 
 ## Story Merge (After PM Approves)
 
-After PM-Acceptor accepts a story, merge it immediately:
+After PM-Acceptor accepts a story, merge it immediately. Pre-merge checks,
+each as its own command:
+
+1. `git worktree list` -- if any worktree still holds `story/<ID>` (e.g. a
+   leftover dev worktree), remove it with `pvg worktree remove <path>`; a
+   held branch blocks deletion after merge.
+2. `git status --porcelain` -- must be clean. If `.vault/backlog-snapshot/`
+   is dirty, run `pvg nd sync --commit` first.
 
 ```bash
 pvg story merge <STORY-ID>
 ```
+
+For any MANUAL git merge (gates, recovery): never chain `git checkout` and
+`git merge` with `;` -- if the checkout aborts (dirty tree), the merge still
+runs on whatever branch HEAD is actually on, which can land a story directly
+on main. Use separate commands or `&&` only.
 
 If a merge conflict occurs, spawn a developer to resolve it:
 
@@ -453,8 +517,8 @@ git branch -D epic/EPIC_ID
 requires the epic to be closed BEFORE the `accepted` label is added -- two
 canonical steps, in this order:
 ```bash
-pvg issues close EPIC_ID --reason="All stories accepted, gate passed"
-pvg issues update EPIC_ID --add-label accepted
+pvg nd close EPIC_ID --reason="All stories accepted, gate passed"
+pvg nd update EPIC_ID --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
@@ -465,11 +529,16 @@ git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
 tracked snapshot. Run it on main after every epic merge and commit the result:
 
 ```bash
-pvg nd sync
-git add .vault/backlog-snapshot
-git commit -m "chore(paivot): backlog snapshot after EPIC_ID"
+pvg nd sync --commit   # export + stage + commit in one atomic step
 git push origin main
 ```
+
+Sync and commit must never be separated: a tracked snapshot left dirty
+breaks checkouts mid-loop and shows as phantom modifications. If you ever
+find `.vault/backlog-snapshot/` dirty mid-loop, run `pvg nd sync --commit`
+immediately (never `git checkout --` it away -- that discards the freshest
+export). Automation (cron snapshots) must use `pvg nd sync --out <dir>` so
+it never touches the working tree.
 
 (`pvg nd restore` re-imports the snapshot into an empty live vault after a
 fresh clone.) `.vault/knowledge/` and `.vault/backlog-snapshot/` are the ONLY

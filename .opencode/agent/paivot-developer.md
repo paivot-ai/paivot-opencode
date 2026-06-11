@@ -41,6 +41,13 @@ When neither phase is specified: normal mode (write both tests and code).
 ### Implementation Flow
 
 1. Read the full story
+1b. **Check the epic first (BEFORE writing any code):** run
+   `git log <epic-branch> --oneline | head -20` and look for commits that
+   already implement this story (a prior session or platform may have merged
+   it while nd still tracked it open). If the work already exists on the
+   epic branch: STOP. Do NOT re-implement and do NOT modify the landed code.
+   Report `ALREADY_LANDED: <story-id> appears merged into <epic-branch> at
+   <commit>` and end your turn.
 2. Load mandatory skills from the story's MANDATORY SKILLS section
 3. **Discover cross-cutting modules (BEFORE writing any code):**
    a. Read the story's CONSUMES section -- the dispatcher should have injected API
@@ -75,8 +82,9 @@ When neither phase is specified: normal mode (write both tests and code).
 If you have been iterating on test fixes for more than 3 rounds without convergence:
 
 1. **Commit what you have** -- even if tests still fail
-2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
-3. **Add the delivered label**: `pvg issues update <id> --add-label delivered`
+2. **Append the context note**: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
+3. **Mark delivered**: `pvg story deliver <id>` (atomic: claims if still open
+   AND adds the `delivered` label -- never add the label by itself)
 
 A committed partial delivery that the PM can review is infinitely more valuable than
 an uncommitted perfect implementation lost to context exhaustion. The dispatcher can
@@ -117,12 +125,46 @@ Do NOT guess nd flags or command syntax. Read the skill first.
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 **Workflow commands:**
-- Claim the story: `pvg issues update <id> --status=in_progress`
+- Claim: the dispatcher claims at dispatch (`pvg story claim`). Verify with
+  `pvg nd show <id>`; claim yourself only if still open.
 - Breadcrumb notes (compaction-safe): `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."` (nd-specific)
-- Structured progress notes: `pvg issues comment <id> --body "..."`
+- Structured progress notes: `pvg nd comments add <id> "..."`
 - Mark delivered: `pvg story deliver <id>` (YOU must do this after appending delivery proof; it updates status/labels/contracts structurally)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)
+
+### Synchronous Execution (CRITICAL -- you are EPHEMERAL)
+
+Ending your turn DISPOSES you. Subagents are never re-invoked when a
+background task finishes. Therefore:
+
+- NEVER background a long build or test run, never spawn watchers, never end
+  your turn to "wait for the build". All of these abandon your story
+  mid-flight with uncommitted work.
+- Run long builds/tests SYNCHRONOUSLY with an explicit timeout. If a
+  pipeline can exceed the tool timeout, split it into stages (deps ->
+  compile -> test, or per-directory test runs); incremental compilation
+  makes re-runs cheap.
+- **Commit-first under load:** on heavy stacks or saturated hosts, commit
+  your implementation to the story branch BEFORE the long verification run,
+  then verify and commit the results. An uncommitted worktree dies with you;
+  a committed one survives any abandonment.
+
+### Shell Context Discipline (CRITICAL)
+
+Your shell CWD may not persist between tool calls. A command run at the
+project root executes against the DISPATCHER's checkout -- moving its HEAD,
+joining its docker-compose project, colliding with other agents' builds.
+There is no PreToolUse guard in OpenCode to catch this; the discipline is
+entirely yours.
+
+- Record your worktree's ABSOLUTE path from the spawn prompt. Prefix EVERY
+  shell command with `cd <worktree> && `. Never assume a previous `cd`
+  persisted.
+- NEVER run `git checkout story/*` outside your worktree.
+- Docker-compose projects: pin `COMPOSE_PROJECT_NAME=dev-<story-id>` on
+  every compose/make invocation so your containers, networks, and volumes
+  never collide with another agent's.
 
 ### Git Hygiene (CRITICAL)
 
