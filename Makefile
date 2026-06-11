@@ -197,7 +197,9 @@ test: check-deps ## Run all checks
 	@echo "OK: Agent prompts are self-contained"
 	@echo ""
 	@echo "Checking pvg shared workflow commands are available..."
-	@pvg nd root --ensure >/dev/null || (echo "FAIL: pvg nd root --ensure failed" && exit 1)
+	@# Run --ensure in a throwaway repo: since pvg v1.54.2 it CREATES
+	@# .vault/.nd-shared.yaml, and this plugin repo is not nd-managed.
+	@tmp=$$(mktemp -d) && git -C "$$tmp" init -q && (cd "$$tmp" && pvg nd root --ensure >/dev/null) && rm -rf "$$tmp" || (echo "FAIL: pvg nd root --ensure failed" && exit 1)
 	@pvg help 2>&1 | grep -q 'story <subcommand>' || (echo "FAIL: installed pvg is missing story workflow commands" && exit 1)
 	@pvg help 2>&1 | grep -q 'loop setup' || (echo "FAIL: installed pvg is missing loop workflow commands" && exit 1)
 	@pvg loop next --json >/dev/null || (echo "FAIL: pvg loop next --json failed" && exit 1)
