@@ -361,7 +361,8 @@ as `phase` ("red" or "green") -- trust the loop output, do not infer:
    NEVER closed or labeled `accepted`.
 3. GREEN phase: the loop returns `developer_new` with `"phase":"green"`
    (same story, now labeled `red-approved`). Spawn developer with
-   "GREEN PHASE" in the prompt (implementation only; RED tests untouched).
+   "GREEN PHASE" in the prompt (implementation only; RED test files untouched --
+   new test files allowed, edits/deletes to RED files are not).
 4. GREEN review: the loop returns `pm_review` with `"phase":"green"`.
    Standard acceptance applies (`pvg story accept`).
 
@@ -479,7 +480,10 @@ Validate that the completed epic delivered real value:
 - Inspect tests for mocks in integration/e2e tests (forbidden)
 - Verify skills were consulted where stories required them
 - Check that boundary maps are satisfied (PRODUCES/CONSUMES)
-- Validate hard-TDD two-commit pattern where applicable
+- Validate hard-TDD pattern where applicable: the `tdd-red` commit precedes the
+  GREEN implementation, RED test files were not edited/deleted afterward (new test
+  files are allowed), and the RED tests still pass exactly as authored
+  (`pvg story verify-tdd --base <epic-branch>`)
 
 Epic branch: epic/EPIC_ID
 ```

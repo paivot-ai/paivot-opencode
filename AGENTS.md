@@ -328,7 +328,8 @@ The developer writes both implementation and tests in a single pass.
    - Developer receives a `RED PHASE` prompt and delivers tests only
 2. PM-Acceptor reviews tests
 3. **GREEN phase**: spawn developer with "GREEN PHASE" prompt (implementation only)
-   - Developer receives a `GREEN PHASE` prompt and must not modify test files
+   - Developer receives a `GREEN PHASE` prompt and must not modify the RED test
+     files (adding NEW test files is allowed; editing/deleting RED files is not)
 4. PM-Acceptor reviews implementation
 
 ### Bug Triage Protocol
