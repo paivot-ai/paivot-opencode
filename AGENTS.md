@@ -254,7 +254,7 @@ omissions, hallucinations, and drift before they cascade downstream.
 
 **Key rules:**
 - Challengers are read-only -- they never write files or talk to the user
-- Challengers use Sonnet (cheap, focused review) -- not Opus
+- Challengers are scoped to focused review (read-only, single-document)
 - The dispatcher relays feedback; challengers never interact with creators directly
 - Each challenger only reviews its own document scope (BA Challenger does not review DESIGN.md, etc.)
 

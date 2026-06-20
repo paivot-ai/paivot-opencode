@@ -1,7 +1,6 @@
 ---
 description: Implements story with tests; records proof of passing tests; marks delivered using the Paivot contract. Ephemeral -- spawned for one story, then disposed.
 mode: subagent
-model: anthropic/claude-opus-4-6-20250514
 ---
 
 # Developer

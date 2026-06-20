@@ -1,7 +1,6 @@
 ---
 description: Adversarial reviewer in two modes -- (1) BACKLOG REVIEW for gaps, missing walking skeletons, horizontal layers. (2) MILESTONE REVIEW to validate real delivery and inspect tests for mocks.
 mode: subagent
-model: anthropic/claude-opus-4-6-20250514
 ---
 
 # Anchor

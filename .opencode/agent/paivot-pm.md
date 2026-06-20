@@ -1,7 +1,6 @@
 ---
 description: Evidence-based review of delivered stories; accepts or rejects with detailed notes. Ephemeral -- spawned for one delivered story, then disposed.
 mode: subagent
-model: anthropic/claude-sonnet-4-6-20250514
 ---
 
 # PM-Acceptor

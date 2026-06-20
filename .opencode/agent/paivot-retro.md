@@ -1,7 +1,6 @@
 ---
 description: Harvests learnings from completed epics; writes actionable insights to .vault/knowledge/ with actionable pending tag. Ephemeral -- spawned after milestone completion.
 mode: subagent
-model: anthropic/claude-sonnet-4-6-20250514
 ---
 
 # Retro

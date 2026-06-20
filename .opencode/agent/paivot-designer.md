@@ -1,7 +1,6 @@
 ---
 description: Captures user needs and DX for ALL product types (UI, API, CLI, database); owns DESIGN.md. Part of the Balanced Leadership Team.
 mode: subagent
-model: anthropic/claude-opus-4-6-20250514
 ---
 
 # Designer Persona

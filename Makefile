@@ -186,11 +186,14 @@ test: check-deps ## Run all checks
 	done
 	@echo "OK: All agents have mode: subagent"
 	@echo ""
-	@echo "Checking agent model fields are present..."
+	@echo "Checking model is configured as a single default (no per-agent pins)..."
+	@python3 -c "import json,sys; c=json.load(open('opencode.json')); sys.exit('FAIL: opencode.json is missing a top-level \"model\" default') if 'model' not in c else None; pinned=[k for k,v in c.get('agent',{}).items() if 'model' in v]; sys.exit('FAIL: opencode.json pins per-agent model(s): %s -- models are configured once via the top-level \"model\" default so they are not scattered across agents' % ', '.join(pinned)) if pinned else None"
 	@for agent in sr-pm pm developer architect designer business-analyst anchor retro ba-challenger designer-challenger architect-challenger; do \
-		grep -q '^model: ' .opencode/agent/paivot-$$agent.md || (echo "FAIL: paivot-$$agent.md missing model field" && exit 1); \
+		if grep -q '^model:' .opencode/agent/paivot-$$agent.md; then \
+			echo "FAIL: paivot-$$agent.md hard-codes a model in frontmatter -- rely on the top-level opencode.json \"model\" default instead" && exit 1; \
+		fi; \
 	done
-	@echo "OK: All agents declare a model field"
+	@echo "OK: Model is a single top-level default; no per-agent pins"
 	@echo ""
 	@echo "Checking agent prompts are self-contained (no vault-read for operational instructions)..."
 	@for agent in sr-pm developer anchor retro pm; do \

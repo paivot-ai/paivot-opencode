@@ -1,7 +1,6 @@
 ---
 description: Adversarial review of ARCHITECTURE.md for unmet requirements, untraceable decisions, and contradictions. Only spawned when dnf.specialist_review is enabled.
 mode: subagent
-model: anthropic/claude-sonnet-4-6-20250514
 ---
 
 # Architect Challenger

@@ -115,7 +115,9 @@ When Paivot is invoked, the main OpenCode session becomes a **dispatcher** that:
 
 ### Model Portability
 
-OpenCode can run these prompts with Anthropic models or top OSS coding models. The workflow is more reliable when prompts stay structural:
+OpenCode can run these prompts with Anthropic models or top OSS coding models. The model is configured as a **single top-level `model` default** in `opencode.json` -- agents do not pin their own models (no `model:` in agent frontmatter, no per-agent `model` in `opencode.json`). To switch providers or models, change that one key, or override it per project in the project's `opencode.json`. The shipped default is `github-copilot/gpt-5.5`.
+
+The workflow is more reliable when prompts stay structural:
 
 - use exact marker blocks like `QUESTIONS_FOR_USER`, `BLT_ALIGNED`, `BLT_INCONSISTENCIES`, and `DISCOVERED_BUG`
 - use `pvg nd` instead of relying on remembered `--vault` flags
@@ -138,19 +140,21 @@ Agent prompts are **self-contained** in their `.md` files -- no runtime vault de
 
 ## Agents
 
-| Agent | Model | Role |
-|-------|-------|------|
-| `@paivot-sr-pm` | Opus | Creates backlog from D&F docs; triages bugs; exclusive bug creator |
-| `@paivot-pm` | Sonnet | PM-Acceptor -- evidence-based review of delivered work |
-| `@paivot-developer` | Opus | Ephemeral -- implements one story, records proof, delivers |
-| `@paivot-architect` | Opus | Designs system architecture, owns ARCHITECTURE.md |
-| `@paivot-designer` | Opus | Captures user needs for all product types, owns DESIGN.md |
-| `@paivot-business-analyst` | Opus | Iterative business discovery, owns BUSINESS.md |
-| `@paivot-ba-challenger` | Sonnet | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
-| `@paivot-designer-challenger` | Sonnet | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
-| `@paivot-architect-challenger` | Sonnet | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
-| `@paivot-anchor` | Opus | Adversarial reviewer -- backlogs and milestones |
-| `@paivot-retro` | Sonnet | Harvests learnings from completed epics |
+All agents run on the single top-level `model` default (see Model Portability above).
+
+| Agent | Role |
+|-------|------|
+| `@paivot-sr-pm` | Creates backlog from D&F docs; triages bugs; exclusive bug creator |
+| `@paivot-pm` | PM-Acceptor -- evidence-based review of delivered work |
+| `@paivot-developer` | Ephemeral -- implements one story, records proof, delivers |
+| `@paivot-architect` | Designs system architecture, owns ARCHITECTURE.md |
+| `@paivot-designer` | Captures user needs for all product types, owns DESIGN.md |
+| `@paivot-business-analyst` | Iterative business discovery, owns BUSINESS.md |
+| `@paivot-ba-challenger` | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-designer-challenger` | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-architect-challenger` | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-anchor` | Adversarial reviewer -- backlogs and milestones |
+| `@paivot-retro` | Harvests learnings from completed epics |
 
 ## Execution Workflow
 
@@ -224,7 +228,7 @@ Recommended one-liner to add to your user global `~/.claude/CLAUDE.md` so any se
 |--------|---------------------------|-----------------|
 | Workflow enforcement | Claude hooks plus shared `pvg` guard/loop commands | OpenCode commands/prompts plus the same shared `pvg` control plane |
 | Agent refs | `paivot-graph:role` | `@paivot-role` |
-| Model IDs | `opus`, `sonnet` | `anthropic/claude-opus-4-6-20250514` |
+| Model IDs | `opus`, `sonnet` per agent | single top-level `model` default (no per-agent pins) |
 | Config format | `plugin.json` | `opencode.json` |
 | Instructions file | `CLAUDE.md` | `AGENTS.md` |
 | Agent mode | Implicit | Explicit `mode: subagent` |

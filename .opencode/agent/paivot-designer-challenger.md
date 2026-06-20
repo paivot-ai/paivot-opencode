@@ -1,7 +1,6 @@
 ---
 description: Adversarial review of DESIGN.md for unmet user needs, hallucinations, and contradictions with BUSINESS.md. Only spawned when dnf.specialist_review is enabled.
 mode: subagent
-model: anthropic/claude-sonnet-4-6-20250514
 ---
 
 # Designer Challenger

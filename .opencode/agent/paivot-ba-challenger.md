@@ -1,7 +1,6 @@
 ---
 description: Adversarial review of BUSINESS.md for omissions, hallucinations, and drift. Only spawned when dnf.specialist_review is enabled.
 mode: subagent
-model: anthropic/claude-sonnet-4-6-20250514
 ---
 
 # BA Challenger

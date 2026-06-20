@@ -1,70 +1,59 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-sonnet-4-6-20250514",
+  "model": "github-copilot/gpt-5.5",
   "agent": {
     "paivot-sr-pm": {
       "description": "Creates comprehensive backlog from D&F documents with embedded context. Also the DEFAULT agent authorized to create bugs -- when bug_fast_track is enabled, PM-Acceptor can create bugs directly with guardrails. Receives DISCOVERED_BUG reports, creates fully structured bugs with AC, epic placement, and dependency chain.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-sr-pm.md"
     },
     "paivot-pm": {
       "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes. Ephemeral -- spawned for one delivered story, then disposed.",
-      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-pm.md"
     },
     "paivot-developer": {
       "description": "Implements story with tests; records proof of passing tests; marks delivered using the Paivot contract. Ephemeral -- spawned for one story, then disposed.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-developer.md"
     },
     "paivot-architect": {
       "description": "Designs system architecture; owns ARCHITECTURE.md. Part of the Balanced Leadership Team. Asks clarifying questions about technical constraints via QUESTIONS_FOR_USER blocks.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-architect.md"
     },
     "paivot-designer": {
       "description": "Captures user needs and DX for ALL product types (UI, API, CLI, database); owns DESIGN.md. Part of the Balanced Leadership Team.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-designer.md"
     },
     "paivot-business-analyst": {
       "description": "Captures business outcomes through iterative questioning rounds; owns BUSINESS.md. Part of the Balanced Leadership Team.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-business-analyst.md"
     },
     "paivot-anchor": {
       "description": "Adversarial reviewer in two modes: (1) BACKLOG REVIEW -- find gaps, missing walking skeletons, horizontal layers. (2) MILESTONE REVIEW -- validate real delivery, inspect tests for mocks.",
-      "model": "anthropic/claude-opus-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-anchor.md"
     },
     "paivot-retro": {
       "description": "Harvests learnings from completed epics; writes actionable insights to .vault/knowledge/ with actionable: pending tag.",
-      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-retro.md"
     },
     "paivot-ba-challenger": {
       "description": "Adversarial review of BUSINESS.md for omissions, hallucinations, and drift. Only spawned when dnf.specialist_review is enabled.",
-      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-ba-challenger.md"
     },
     "paivot-designer-challenger": {
       "description": "Adversarial review of DESIGN.md for unmet user needs, hallucinations, and contradictions with BUSINESS.md. Only spawned when dnf.specialist_review is enabled.",
-      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-designer-challenger.md"
     },
     "paivot-architect-challenger": {
       "description": "Adversarial review of ARCHITECTURE.md for unmet requirements, untraceable decisions, and contradictions. Only spawned when dnf.specialist_review is enabled.",
-      "model": "anthropic/claude-sonnet-4-6-20250514",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-architect-challenger.md"
     }
@@ -119,7 +108,9 @@
       "template": ".opencode/commands/vault-triage.md"
     }
   },
-  "instructions": ["AGENTS.md"],
+  "instructions": [
+    "AGENTS.md"
+  ],
   "permission": {
     "bash": "allow",
     "write": "ask"

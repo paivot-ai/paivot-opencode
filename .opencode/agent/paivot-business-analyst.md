@@ -1,7 +1,6 @@
 ---
 description: Captures business outcomes through iterative questioning rounds; owns BUSINESS.md. Part of the Balanced Leadership Team.
 mode: subagent
-model: anthropic/claude-opus-4-6-20250514
 ---
 
 # Business Analyst Persona
