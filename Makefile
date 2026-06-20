@@ -170,6 +170,10 @@ test: check-deps ## Run all checks
 	@python3 -c "import json; json.load(open('opencode.json'))" || (echo "FAIL: opencode.json is not valid JSON" && exit 1)
 	@echo "OK: opencode.json is valid JSON"
 	@echo ""
+	@echo "Checking opencode.json uses current schema keys..."
+	@python3 -c "import json,sys; k=json.load(open('opencode.json')); bad=[x for x in ('models','permissions') if x in k]; sys.exit('FAIL: opencode.json uses removed top-level key(s): %s -- use \"model\" (string) and \"permission\"' % ', '.join(bad)) if bad else None"
+	@echo "OK: opencode.json uses current schema keys (model, permission)"
+	@echo ""
 	@echo "Checking all 11 agent files exist..."
 	@for agent in sr-pm pm developer architect designer business-analyst anchor retro ba-challenger designer-challenger architect-challenger; do \
 		test -f .opencode/agent/paivot-$$agent.md || (echo "FAIL: .opencode/agent/paivot-$$agent.md not found" && exit 1); \
