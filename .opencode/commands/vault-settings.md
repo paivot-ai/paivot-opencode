@@ -32,6 +32,7 @@ workflow.fsm: true
 workflow.sequence: open,in_progress,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: rejected
+dnf.domain_model: false
 architecture.c4: false
 loop.persist_across_sessions: true
 lint.quality_gates:
@@ -40,6 +41,10 @@ lint.brownfield: false
 
 Notes on selected settings:
 
+- `dnf.domain_model` (default `false`): when enabled, the Architect maintains a
+  `*.modelith.yaml` domain model as the machine-checkable twin of ARCHITECTURE.md;
+  the Sr PM turns invariants into acceptance criteria and the Anchor checks
+  entity/invariant coverage. Requires the `modelith` CLI (`pvg setup`/`update`).
 - `loop.persist_across_sessions` (default `true`): the execution loop survives
   session boundaries -- agent completions resume it where it left off. Set
   `false` to clear loop state when the session exits, even if work remains.

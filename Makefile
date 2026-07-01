@@ -143,7 +143,7 @@ else
 	@for agent in $(OC_AGENTS); do \
 		rm -f "$(OC_CONFIG)/agent/paivot-$$agent.md"; \
 	done
-	@rm -rf "$(OC_CONFIG)/skills/c4" "$(OC_CONFIG)/skills/vault-knowledge"
+	@rm -rf "$(OC_CONFIG)/skills/c4" "$(OC_CONFIG)/skills/domain-model" "$(OC_CONFIG)/skills/vault-knowledge"
 	@rm -rf "$(OC_CONFIG)/skills/paivot-methodology" "$(OC_CONFIG)/skills/paivot-orchestrator"
 	@rm -f "$(OC_CONFIG)/AGENTS.md"
 	@echo "Paivot removed."
