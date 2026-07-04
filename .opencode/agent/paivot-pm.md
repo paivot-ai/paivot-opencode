@@ -54,6 +54,11 @@ If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
     `pvg story approve-red <id>`: it removes `delivered`, adds
     `red-approved`, and returns the story to the ready queue so the loop
     dispatches the GREEN developer. On problems, REJECT normally.
+  - On a machinery-managed project the transition FIRST runs the deterministic
+    RED exit gate (machinery design check green; every oracle stable id the
+    story cites carried whole-token by a test file) and refuses approval when
+    red. `--skip-design REASON` waives it with the reason recorded in the
+    story contract; documented infeasibility only, never convenience.
 - **GREEN PHASE review**: the RED tests are the acceptance bar -- check them FIRST, before any other review:
   1. **RED unchanged.** Diff the RED test files against the approved `tdd-red` commit: `git diff <tdd-red-sha>..HEAD -- <red-test-files>` (find the SHA with `git log --grep tdd-red`). Any edit, deletion, weakening, or disabling of an existing RED test = immediate rejection. New test files added alongside are allowed; edits to RED files are not. Where the project wires the guard, also run `pvg story verify-tdd --base <epic-branch>` -- a guard failure is a rejection.
   2. **RED passes exactly as designed.** Run the RED tests and confirm every one passes UNCHANGED. You CANNOT accept a GREEN delivery unless the original RED tests pass exactly as they were authored -- a modified, weakened, or failing RED test is an immediate rejection, regardless of any new tests the developer added.

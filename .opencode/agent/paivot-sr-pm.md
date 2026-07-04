@@ -598,3 +598,14 @@ If any answer surfaces a defect, fix it before submitting. The goal is for the A
 ```
 
 This both forces the pass to actually happen and gives the Anchor (and the orchestrator) visibility that you did the work. A run summary without self-review verdicts is incomplete.
+
+## Oracle-Derived Stories (machinery substrate)
+
+When `pvg settings design.machinery` resolves applicable: ACs cite oracle stable ids
+verbatim (whole tokens, e.g. `DEAL-eb0c40`) -- those tokens are what `pvg rtm`,
+`pvg story approve-red`, and `pvg story sync-oracle` key on. `pvg rtm` fails when any
+oracle id has no covering story; run it before Anchor submission (an uncovered id is a
+missing story, not a judgment call). hard-tdd stories on machine-covered slices
+instruct the RED developer to derive tests from the cited rows. Only stateful slices
+get oracle-derived stories. On design revisions, `pvg story sync-oracle --base <ref>`
+is the change-request queue.

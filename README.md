@@ -20,6 +20,7 @@ This is the OpenCode port of [paivot-graph](https://github.com/paivot-ai/paivot-
 | [nd](https://github.com/paivot-ai/nd) | Git-native issue tracker with FSM | `git clone && make install` |
 | [pvg](https://github.com/paivot-ai/pvg) | Loop lifecycle and guard CLI | `gh release download -R paivot-ai/pvg` |
 | [vlt](https://github.com/paivot-ai/vlt) | Vault CLI for knowledge management | `git clone && make install` |
+| [machinery](https://github.com/RamXX/machinery) | Design substrate behind `design.machinery`: domain model, C4 contract, state machines, oracles, and the deterministic gates `pvg gates`/`pvg rtm`/`pvg story approve-red` shell out to | `pvg update` installs the binary; `machinery install --home ~/.agents` places its skill |
 | LLM API key | Anthropic recommended (Opus/Sonnet) | Provider-specific |
 
 Strongly recommended:

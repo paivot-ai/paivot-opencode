@@ -1,55 +1,42 @@
 ---
 name: domain-model
-description: Canonical domain model (entities, relationships, invariants) as a machine-checkable twin of ARCHITECTURE.md, authored with modelith. Use when the project has `dnf.domain_model` enabled in settings, or when the user asks about the domain model, entities, invariants, ubiquitous language, or shared vocabulary during Discovery & Framing. Teaches how the Architect owns the model, the Sr PM turns invariants into acceptance criteria, and the Anchor checks coverage.
-version: 1.0.0
+description: Canonical domain model and its derivation chain on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy dnf.domain_model setting is enabled, or when the user asks about the domain model, entities, invariants, ubiquitous language, state machines, oracles, stable ids, or how stories derive from the design.
 ---
 
-# Domain Model
+# Domain model in D&F (machinery Phases 1 and 3)
 
-Maintain a machine-checkable domain model alongside the narrative ARCHITECTURE.md. It is the single canonical source of the product's entities, how they relate, and the invariants that must always hold. The D&F documents reference it rather than each redefining the vocabulary -- the cure for context divergence (the same concept named differently across BUSINESS.md, DESIGN.md, ARCHITECTURE.md, and the stories).
+The model is `design/domain.modelith.yaml`, authored with modelith and linted by
+`modelith lint`: the single canonical source of the product's entities, relationships,
+and invariants. The three D&F documents reference it; they never redefine vocabulary.
+On the machinery substrate it starts a derivation chain: lifecycle enums become state
+machines (Phase 3), machines generate transition oracles, and oracle rows carry
+content-derived STABLE IDS (tokens like `DEAL-eb0c40`) that stories and tests key on.
 
-## When This Applies
+## When this applies
 
-Check the project setting:
-```bash
-pvg settings dnf.domain_model
-```
+`pvg settings design.machinery` resolves it (auto | on | off), same as the c4 skill.
+Legacy `dnf.domain_model=true` keeps the v1 flow until the model moves under `design/`.
+Both `modelith` and `machinery` converge via `pvg update`.
 
-- `true` -- the Architect maintains the model; the Sr PM dereferences it into stories; the Anchor checks coverage
-- `false` (default) -- skip entirely, use narrative ARCHITECTURE.md only
+## Role map
 
-## The Tool: modelith
+| Role | Responsibility |
+|---|---|
+| BA / Designer | Feed the interrogation: what exists, what must always be true, where one word carries two meanings. Brownfield: for every tangle, ask "this looks messy because <specific observation>; what is your desired end state?" The code says what IS; only the user can say what SHOULD BE. |
+| Architect | Owns the model (gate: `modelith lint` clean; every lifecycle entity has a status enum; every invariant an owner) and Phase 3: one machine per stateful component, then `machinery oracle design/machines`. A machine edit and its regenerated oracle land in the SAME change; staleness is DRIFT and blocks. |
+| Sr PM | Dereferences the model into stories: invariants become ACs; for machine-covered slices the ORACLE ROWS are the test spec and ACs cite stable ids verbatim (whole tokens). `pvg rtm` fails when any oracle id has no covering story; run it before Anchor submission. Model the stateful core only. |
+| Anchor | `pvg rtm` in the deterministic pre-pass ([ORACLE] rows use exact token matching). Attest what the tool cannot: whether the invariants are the RIGHT ones; a shallow model gates clean. |
+| Developer | Derives hard-TDD RED tests from the cited oracle rows, keyed on stable ids. `pvg story approve-red` verifies coverage deterministically before the suite locks. |
+| PM | On design revisions, `pvg story sync-oracle --base <ref>` maps the stable-id diff onto affected stories. |
 
-The model is a `*.modelith.yaml` file, linted and rendered by the `modelith` CLI (provisioned by `pvg setup`/`pvg update`; `pvg doctor` reports it).
-```bash
-modelith --version    # if missing: pvg update
-modelith schema       # authoritative format reference -- read before authoring
-modelith lint domain.modelith.yaml      # must pass; non-zero = fix the model
-modelith render domain.modelith.yaml    # regenerate the committed .md twin
-```
-The YAML is the output of a conversation, not hand-written. If a concept has no crisp definition, resolve that fuzziness rather than paper over it.
+## Codebase archaeology (brownfield)
 
-## File Layout
+Excavate the model from code, schema, and production data AS IT IS; record incoherence
+as open questions. When a codebase-graph MCP is available (codebase-memory-mcp or
+equivalent), index the repository first and drive the excavation through its tools
+instead of grep. Start this dialog on day one, in parallel with the boundary baseline.
 
-```
-domain.modelith.yaml       # Canonical model (linted; the machine-checkable twin)
-domain.modelith.md         # Generated Markdown + ER diagram (never hand-edited)
-ARCHITECTURE.md            # Narrative architecture (always exists; references the model)
-```
+## Format and deep dives
 
-## Build Order
-
-Skeleton first, in passes across the whole model:
-
-1. **Skeleton** -- name every entity (crisp definition); declare `relationships`, `cardinality` (`1:1`/`1:n`/`n:1`/`n:n`), and `ownership` (`owned` = a part that cannot exist alone; `referenced` = independent). Renders to an ER diagram.
-2. **Behavior** -- add `invariants` (each `{id, statement}`) and `scenarios` (tagged with `invariants_touched`).
-3. **Refinement** -- `attributes`, `enums`, `actions`, `glossary` roles, only where they add clarity.
-
-Entity keys are PascalCase; backtick entity names in freeform text.
-
-## Agent Responsibilities
-
-- **Architect**: owns `domain.modelith.yaml`; authors it skeleton-first from the BA/Designer concepts; keeps it consistent with ARCHITECTURE.md's data architecture (the model is canonical); runs `modelith lint`/`render` on every change. It is a protected, architect-owned D&F artifact: the guard blocks writes to `*.modelith.yaml` unless the Architect is active.
-- **Sr PM**: uses entity/attribute names verbatim from the model; turns each invariant into an EARS Ubiquitous acceptance criterion; adds `domain-model` to the story's MANDATORY SKILLS TO REVIEW section.
-- **Developer**: reads the model for the entities/invariants the story touches; uses canonical names; upholds invariants; raises (does not silently diverge) if code forces a concept change.
-- **Anchor**: checks coverage -- every entity touched by a story, every invariant mapped to an acceptance criterion, no story renames a modeled concept, the `.md` twin in sync with the `.yaml`.
+`modelith schema` for the YAML format. The four-phase pipeline, machine annotations,
+oracle contract, and revision mode: the machinery skill (`machinery install --home ~/.agents`) and its references. Reference formats, never restate them.

@@ -113,3 +113,16 @@ pvg nd stats                  # View statistics (nd-specific)
 ```
 
 **I NEVER:** create, update, close, or reprioritize stories (PM-only).
+
+## Design Substrate (machinery)
+
+When `pvg settings design.machinery` resolves applicable (the c4 and domain-model skills
+carry the full role map), the checkable design is mine: `design/domain.modelith.yaml`
+(gate: `modelith lint` clean), `design/workspace.dsl` plus the Architecture Contract in
+`design/ARCHITECTURE.md` (exit gate, non-negotiable before handing to the Sr PM:
+`machinery check design --gate g2` green; state the result in my deliverable), and for
+stateful slices the machines plus `machinery oracle design/machines` (edits and
+regenerated oracles land atomically). Brownfield: `machinery baseline design --impl .`,
+review with the user, commit `design/ratchet.json`. Never hand-edit generated artifacts
+(`*.oracle.md`, `formal/*.tla|*.cfg`, `packs/`, `pack/`, `ratchet.json`). The tool owns
+the deterministic half of each gate; I attest the judgment half and say so explicitly.

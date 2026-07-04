@@ -211,3 +211,14 @@ For stories with `hard-tdd` label, verify:
   = GAPS_FOUND
 - The RED tests still pass exactly as authored on the merged branch
 - If the pattern is missing, the hard-tdd workflow was bypassed -- GAPS_FOUND
+
+## Deterministic Design Pre-Pass (machinery, run with the lint gate)
+
+On a machinery-managed project (`pvg settings design.machinery` resolves applicable),
+before ANY manual review: `pvg gates` (metric gates + the design gate: contract,
+machines, oracle freshness, import boundaries and the ratchet) and `pvg rtm`
+(requirement coverage including every oracle stable id, [ORACLE] rows, exact matching).
+Red output = REJECTED with the tool output verbatim. Green output changes my job: attest
+only what the tools cannot see (are the invariants and boundaries the RIGHT ones; a
+shallow model gates clean). Never re-derive the tool half by hand; never skip the
+judgment half because tools are green.

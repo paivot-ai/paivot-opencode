@@ -1,72 +1,46 @@
 ---
 name: c4
-description: Architecture-as-code using C4 model and Structurizr DSL. Use when the project has `architecture.c4` enabled in settings, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, or dependency rules. Teaches agents how to maintain a canonical architecture model alongside ARCHITECTURE.md, declare machine-checkable boundaries, and export diagrams.
-version: 1.0.0
+description: Architecture-as-code on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, boundary baselining, or import drift. Maps the Paivot roles onto machinery Phase 2.
 ---
 
-# C4 Architecture Model
+# Architecture with machinery (C4 + contract)
 
-Maintain a machine-checkable C4 architecture model alongside the narrative ARCHITECTURE.md.
+The canonical architecture is machinery Phase 2: `design/workspace.dsl` (the C4 model in
+Structurizr DSL) plus the machine-checkable Architecture Contract inside
+`design/ARCHITECTURE.md`. The narrative explains why; the DSL and contract define what,
+and `machinery check` holds the line deterministically. This skill is the ROLE ADAPTER:
+who does what in Paivot. The format itself is documented once, in the machinery skill
+(`machinery install --home ~/.agents` places it at `~/.agents/skills/machinery`; point
+OpenCode at it or copy it beside these skills; see its `references/c4-standalone.md`). Never restate the format here or in
+stories.
 
-## When This Applies
+## When this applies
 
-Check the project setting:
-```bash
-pvg settings architecture.c4
-```
+`pvg settings design.machinery`: `auto` (default) applies exactly when the repo is
+machinery-managed (a `.machinery.json` at the root, or `design/domain.modelith.yaml`);
+`on` promises it (a missing design fails loudly); `off` disables it. Legacy
+`architecture.c4=true` projects keep the old narrative-twin flow until the model moves
+under `design/`. The `machinery` binary converges via `pvg update`; `pvg doctor` reports
+`machinery-reachable`.
 
-- `true` -- maintain the model, enforce boundaries, generate diagrams
-- `false` (default) -- skip entirely, use narrative ARCHITECTURE.md only
+## Role map
 
-## File Layout
+| Role | Responsibility |
+|---|---|
+| Architect | Authors Phase 2: `design/workspace.dsl`, `design/ARCHITECTURE.md` with the Architecture Contract (boundaries with `code:` globs, `exposes`, externals, `ignore`, `dependency_rules`), per-dependency failure postures, the NFR record. Exit gate: `machinery check design --gate g2` green BEFORE handing to the Sr PM. |
+| Architect (brownfield) | Runs `machinery baseline design --impl .`, reviews the proposed `baseline:` rules with the user (a baseline edge is tolerated debt, distinct from an intended `allow:`; add a `deny:` for edges that should die), pastes the survivors, commits `design/ratchet.json`. Any NEW offender file on an amnestied edge then blocks. |
+| Sr PM | References contract boundaries in stories by id; never restates the contract. |
+| Developer | Runs `pvg gates` before delivery: the design gate (machinery check, including G4 import boundaries and the ratchet) runs beside the metric gates and blocks on failure. Never edits generated artifacts (`*.oracle.md`, `formal/*.tla|*.cfg`, `packs/`, `pack/`, `ratchet.json`). |
+| Anchor | Deterministic pre-pass first (`pvg gates`, `pvg rtm`); attests only what tools cannot: are these the RIGHT boundaries, does every Modelith action have an owning component, is the NFR record real. |
 
-```
-workspace.dsl              # Canonical C4 model (Structurizr DSL)
-docs/diagrams/             # Generated diagram artifacts
-ARCHITECTURE.md            # Narrative architecture (always exists)
-```
+## Boundary debt ceremony (brownfield)
 
-## Structurizr DSL Quick Reference
+`machinery baseline` reruns tighten the ratchet after burn-down; "ratchet can tighten"
+notes are the agenda for the monthly debt review. `ratchet.json` diffs are reviewed in
+PRs like contract changes. `ignore:` globs stay unratcheted amnesty; shrink them on the
+same cadence.
 
-```
-workspace "Project Name" "Description" {
-    model {
-        user = person "User" "End user"
-        system = softwareSystem "My System" "What it does" {
-            web = container "Web App" "UI" "React"
-            api = container "API" "Logic" "Go"
-            db  = container "Database" "Storage" "PostgreSQL" "Database"
-        }
-        user -> web "Uses" "HTTPS"
-        web -> api "Calls" "REST/JSON"
-        api -> db "Reads/writes" "SQL"
-    }
-    views {
-        systemContext system "Context" { include *; autoLayout }
-        container system "Containers" { include *; autoLayout }
-    }
-}
-```
+## Diagrams
 
-## Architecture Contract
-
-Embedded in ARCHITECTURE.md as parseable YAML:
-
-```yaml
-contract_version: 1
-boundaries:
-  - id: billing.service
-    kind: container
-    code: ["services/billing/**"]
-    exposes: ["services/billing/api/**"]
-dependency_rules:
-  allow: ["billing.service -> shared.domain"]
-  deny: ["billing.service -> *.database_direct"]
-```
-
-## Agent Responsibilities
-
-- **Architect**: creates/maintains workspace.dsl and Architecture Contract
-- **Sr PM**: adds boundary AC to stories, references c4 skill
-- **Developer**: reads contract before coding, verifies no boundary violations
-- **Anchor**: validates boundaries match code paths in reviews
+`workspace.dsl` loads into Structurizr tooling; export to `docs/diagrams/` when wanted.
+Diagrams are derived; the DSL is the source.

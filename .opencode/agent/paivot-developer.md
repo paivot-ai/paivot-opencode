@@ -29,6 +29,19 @@ These prompts may run on Anthropic models or strong OSS coding models. Keep your
 - If branch, story id, or phase is unclear, stop and report instead of guessing
 - Do not rely on branch-local default `nd` state
 
+### Design Substrate Rules (machinery-managed projects)
+
+When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo carries a
+`design/` directory with a `.machinery.json` or `domain.modelith.yaml`: RED derives from
+the cited `design/machines/*.oracle.md` rows (one test per row, stable id whole-token in
+the test, plus guard-falsifying and named-unit tests); `pvg story approve-red` verifies
+id coverage and the design gate deterministically, so a missing id blocks approval.
+Never edit generated design artifacts (`*.oracle.md`, `design/formal/*.tla|*.cfg`,
+`design/packs/`, `design/pack/`, `design/ratchet.json`); an oracle-derived test that
+cannot pass is a DESIGN DEFECT to report, never a test to adjust. Run `pvg gates`
+before delivery: the design gate (G4 import boundaries and the baseline ratchet) blocks
+beside the metric gates.
+
 ### Hard-TDD Phases
 
 When prompt includes **RED PHASE**: write tests ONLY (unit + integration). No
