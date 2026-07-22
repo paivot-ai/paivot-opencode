@@ -38,7 +38,11 @@ pvg loop setup
 To target a specific epic: `pvg loop setup --epic EPIC_ID`
 To run across all epics without containment (not recommended): `pvg loop setup --all`
 
-Verify activation succeeded before continuing.
+Verify activation succeeded before continuing. `pvg loop setup` also runs a
+best-effort full `nd sync` (snapshot + fetch + field-aware merge + push of the
+nd-native `nd/backlog` branch) so the loop starts from the latest shared
+backlog. A sync failure is a WARN, never fatal -- offline and remote-less
+repos still loop.
 
 **Shell hygiene:** Do NOT append `2>&1` to nd or pvg commands. The shell tool already
 captures stderr separately. Redirecting stderr causes duplicate error display.
@@ -63,12 +67,16 @@ rejected > ready). Follow it:
 
 | Decision | Action |
 |----------|--------|
-| `act` | Spawn the agent specified in `next` (developer or pm_acceptor) |
+| `act` | Spawn the agent specified in `next` (developer or pm_acceptor). If the action carries `resume_agent`, resumption REPLACES the fresh spawn -- deliver the payload to the recorded agent per Semi-Persistent Story Agents below |
 | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
 | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user |
 | `wait` | Agents are working in the current epic. Do nothing. Wait for completions |
 | `complete` | All epics drained. Allow exit |
 | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
+| `other` | Miscellaneous action surfaced in --all mode. Follow the action payload |
+| `no_active_loop` | No loop is active. Run `pvg loop setup` before iterating |
+| `stalled` | The same in_progress story set was observed for 3 consecutive wait evaluations. The payload lists the story ids and worktrees. Run `pvg loop recover`, then re-spawn each affected story or release it (`pvg story release <id>`) |
+| `escalate` | A story hit the rejection cap (3 PM rejections). Surface it to the user with the rejection history and wait for direction. NEVER override the PM |
 
 **`pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch decisions.**
 Do NOT query the tracker directly with `pvg issues ready --json` or `pvg issues list --json`
@@ -91,17 +99,111 @@ field still carries the first action. Spawn one developer per entry in
 exactly as described under Story Branch Setup. The single-source-of-truth rule
 is unchanged: the wave comes from `pvg loop next`, never from unscoped nd queries.
 
+Entries may also carry `resume_agent` and `resume_count`. Handle each such
+entry per Semi-Persistent Story Agents below: resumption replaces the fresh
+spawn for that entry, and a resumed agent counts toward the wave size and the
+concurrency limits exactly like a spawned one.
+
 You MAY use the issues CLI directly for:
 - Reading story content before spawning a developer (`pvg issues show STORY_ID`)
 - Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
+### Semi-Persistent Story Agents
+
+Developer and PM conversations are reusable within a session. Instead of
+paying a fresh spawn for every rework or re-review round, record each agent's
+session handle at completion time and resume the same conversation when the
+loop asks for it. OpenCode's native mechanism is the task tool's `task_id`
+parameter: passing a recorded session id resumes that child conversation.
+
+**Record on completion.** Task results render as `<task id="ses_XXXX" ...>`.
+Immediately after a developer or PM task completes for story STORY_ID, record
+that session id:
+
+```bash
+pvg loop agent set STORY_ID developer <ses-id>   # after a developer completes
+pvg loop agent set STORY_ID pm <ses-id>          # after a PM completes
+```
+
+This applies to EVERY run of these roles -- first spawn, re-spawn after
+failure, fresh-spawn fallback -- so the recorded handle always points at the
+most recent conversation. pvg owns the resume counters and the 2-resume cap
+per story+role.
+
+**Resume on action.** `pvg loop next` actions may carry `resume_agent` (a
+recorded handle) and `resume_count` on developer-rework and pm-review
+actions. pvg emits them only when a handle is recorded, fewer than 2 resumes
+have occurred for that story+role, and the `loop.agent_resume` setting
+(default true) is enabled. When an action carries `resume_agent`:
+
+1. Verify the story worktree still exists on disk.
+2. Invoke the task tool with `subagent_type: paivot-developer` (or
+   `paivot-pm`) AND `task_id: <handle>`. The message body is the
+   rework/review payload (for developer rework: the PM rejection's
+   EXPECTED/DELIVERED/GAP/FIX content).
+3. **RESUME_MISS guard (REQUIRED).** OpenCode falls back to a FRESH child
+   SILENTLY when the `task_id` is stale -- there is no error to catch. Every
+   resume message MUST therefore begin with: "If you do not have prior
+   context for story <STORY_ID> in this conversation, reply RESUME_MISS and
+   stop." A RESUME_MISS reply means the resume did not happen.
+4. On RESUME_MISS, any task error, or a missing worktree: run
+   `pvg loop agent clear STORY_ID <role>`, fall back to the normal fresh
+   spawn with the FULL context-injected brief (Context Injection Protocol),
+   then `pvg loop agent set` the new handle. Also take this path when the
+   agent's last delivery contained a CONTEXT_BUDGET note.
+
+Fresh spawn is ALWAYS the safe fallback; resume is an optimization, never a
+requirement. The current always-fresh behavior is the floor.
+
+**Clear on accept.** After a story is accepted and merged, clear both roles:
+
+```bash
+pvg loop agent clear STORY_ID
+```
+
+**Handles are session-scoped -- but do not rely on that here.** OpenCode
+child sessions persist on disk, and pvg's session-change invalidation may
+not fire under OpenCode. The RESUME_MISS guard plus the failure ladder above
+are the actual guarantee; `pvg loop recover` clears recorded handles.
+
+**Why resume.** A resumed agent keeps its FULL conversation: rework costs a
+fraction of a fresh spawn, the developer remembers its derivations and can
+refute erroneous rejection claims instead of blindly re-implementing, and
+LEARNINGS accumulate richer across rounds. The resumed agent's SHELL STATE
+IS FRESH -- cwd and env vars reset -- which is why its first action is to cd
+back into its worktree (this port already mandates a `cd` prefix on every
+command). Transcripts grow with each round, hence the 2-resume cap.
+
+**Model note.** A resumed child continues under the CURRENT top-level
+`model` from `opencode.json` -- there is nothing per-agent to carry over. A
+mid-loop model switch degrades prompt caching but not correctness; the
+single-model design is unchanged.
+
+**Worktree retention.** The story worktree is the resume anchor: while
+`loop.agent_resume` is enabled (the default), do NOT remove the dev worktree
+at delivery. It persists across rejection rounds until the story is accepted
+and merged (or recovery removes it, which simply forces the fresh-spawn
+fallback). PM review is unaffected: it stays on its no-worktree diff path
+(`git diff`/`git show` against the story branch), which never needs the
+branch checked out. If the dev worktree was removed anyway, re-create it at
+the IDENTICAL path before resuming the developer -- or clear the handle and
+spawn fresh.
+
 ### nd and vlt Usage
 
 For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill documentation.
 
-Do NOT guess nd flags or command syntax. Read the skill first.
+Do NOT guess nd flags or command syntax. Read the skill first. Common
+mistakes prevented by reading it:
+- Priority uses the P-prefixed form: `pvg issues create --priority P0` (nd
+  accepts P0-P4 natively)
+- Dependencies use `pvg nd dep add/rm`, not flags on `pvg issues update`
+
+Do NOT run `nd upgrade` -- it is guard-blocked inside Paivot repos. `pvg update`
+is the only toolchain convergence path (the channel manifest pins nd, machinery,
+vlt, modelith, and pvg together).
 
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
@@ -129,6 +231,16 @@ BUG TRIAGE MODE. Create properly structured bugs for these discovered issues:
 
 Wait for Sr. PM to finish before continuing. Bugs need epic placement and
 dependency chains before other work can be prioritized correctly.
+
+**Durability is automatic.** The Sr. PM writes new bugs (or stories) to the
+live nd vault, which is NOT part of git history -- but every nd mutation
+auto-snapshots locally to the `nd/backlog` git branch, so mid-epic creations
+are durable the moment they land. No manual export or commit step is needed
+here. The dispatcher's owned sync points are `pvg loop setup` (best-effort at
+activation: failure is a WARN, never fatal), after each accepted story merge,
+and at loop end -- each runs a full `nd sync` (snapshot + fetch + field-aware
+merge + push of `nd/backlog`). Never copy files out of the live vault by
+hand -- always go through `pvg nd sync`.
 
 **Note:** When `bug_fast_track` is enabled (or story has `pm-creates-bugs` label),
 PM-Acceptor creates bugs directly during review. Only bugs from Developer agents
@@ -194,8 +306,17 @@ You are a dispatcher. You coordinate agents. You NEVER:
 - Re-submit rejected stories for acceptance without developer rework -- the developer must address the rejection feedback and re-deliver
 - Call `pvg loop cancel` -- only the user can cancel the loop. You do not get to decide when to stop based on "context exhaustion," "productivity," "session length," or any other self-assessed risk.
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
-- Continue or resume a failed developer agent -- clean up and re-spawn fresh
+- Continue or resume a FAILED developer agent -- clean up the worktree, clear
+  its handle (`pvg loop agent clear`), and re-spawn fresh. (Loop-directed
+  resume is different: a `resume_agent` action targets an agent whose
+  delivery the PM rejected, not one that failed -- see Semi-Persistent Story
+  Agents)
 - Inspect agent worktree internals (cd into worktrees, run git log, read files there)
+
+**Rejection cap:** after 3 PM rejections of the same story, `pvg loop next`
+emits the `escalate` decision instead of another rework action. Surface the
+story and its rejection history to the user and wait for direction. The PM's
+verdicts stand -- the dispatcher NEVER overrides the PM.
 
 If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 
@@ -209,18 +330,37 @@ work. On EVERY developer completion or failure:
 1. Check for a terminal outcome: `delivered` label (`pvg nd show <STORY_ID>`),
    or an explicit report in the agent output (ALREADY_LANDED, DISCOVERED_BUG,
    CONTEXT_BUDGET note). NOT by inspecting worktree internals.
-2. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review.
+2. If delivered: record the agent's handle (`pvg loop agent set <STORY_ID>
+   developer <ses-id>`), then proceed with PM review. With `loop.agent_resume`
+   enabled (the default), KEEP the dev worktree -- it is the story's resume
+   anchor across any rejection rounds (see Semi-Persistent Story Agents);
+   it is removed at accept+merge or by recovery. Only when resume is
+   disabled, remove it now: `cd $PROJECT_ROOT && pvg worktree remove
+   .claude/worktrees/dev-<STORY_ID>`.
 3. If NOT delivered but the story branch HAS new commits: spawn a
    deliver-only follow-up (verify + `pvg story deliver`) -- cheap on a warm
    build. Do not discard committed work.
 4. If NOT delivered and NO new commits: the agent abandoned.
    `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`,
-   re-spawn a fresh developer with explicit instructions: fully synchronous
-   execution, explicit timeouts, COMMIT before any long verification.
-5. NEVER try to continue or resume the dead agent.
+   then `pvg loop agent clear <STORY_ID> developer` (a failed agent's
+   conversation is as suspect as its workspace), re-spawn a fresh developer
+   with explicit instructions: fully synchronous execution, explicit
+   timeouts, COMMIT before any long verification. Record the new handle when
+   it completes.
+5. NEVER try to continue or resume a dead or failed agent. (Loop-directed
+   resume of a healthy, delivered agent after a PM rejection is the
+   sanctioned path -- see Semi-Persistent Story Agents.)
 
 PM completions: verify the decision actually landed (`pvg nd show <id>` must
 show closed+accepted, rejected, or red-approved) before acting on it.
+
+The loop also detects stalls structurally: when the same in_progress story
+set is observed for 3 consecutive wait evaluations, `pvg loop next` returns
+the `stalled` decision with the story ids and worktrees in its payload. Run
+`pvg loop recover`, then either re-spawn each affected story or release it
+(`pvg story release <id>`). Recovered stories are released (claim cleared,
+back to open) and unmerged story branches are preserved, not deleted --
+committed work survives recovery.
 
 ## Infrastructure Context (MANDATORY before first developer spawn)
 
@@ -318,14 +458,18 @@ git push -u origin story/STORY_ID
 
 Then CLAIM the story and create a worktree for the developer:
 ```bash
-pvg story claim STORY_ID    # status -> in_progress; MANDATORY before spawning
+pvg story claim STORY_ID    # atomic nd claim; MANDATORY before spawning
 git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
 
-**Claiming at dispatch is not optional.** Until the story leaves the ready
-queue, `pvg loop next` keeps offering it -- in wave dispatch that means
-duplicate developers on the same story. Claim the moment you decide to
-spawn, for EVERY developer including each entry of a wave.
+**Claiming at dispatch is not optional.** `pvg story claim` is atomic: it
+delegates to `nd claim`, which moves the story to in_progress and records
+the claiming agent in one step. There is no race window -- if the claim
+fails, another agent already holds the story: skip it and move on, do not
+retry or force it. This applies to EVERY developer spawn, including each
+entry of a wave. To hand a claimed story back to the ready queue (for
+example, after abandoning a spawn), run `pvg story release STORY_ID` -- it
+returns the story to open and clears the claim.
 
 The developer prompt MUST include the worktree path, and MUST state: run
 everything synchronously with explicit timeouts (never background a build
@@ -344,6 +488,13 @@ on the story branch.
 
 Hard-TDD is **opt-in per story**. `pvg loop next --json` returns `hard_tdd` and `phase`
 for the selected story.
+
+On machinery-managed repos (`design.machinery` applies), hard-TDD is the
+DEFAULT for stories touching machine-owned components: the Sr PM applies the
+`hard-tdd` label to them at backlog creation, and `pvg lint --backlog` gains
+the deterministic `hard-tdd-oracle` check -- ERROR when a story cites oracle
+stable ids without the `hard-tdd` label. The label remains the switch; only
+who applies it changes.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 
@@ -369,20 +520,36 @@ as `phase` ("red" or "green") -- trust the loop output, do not infer:
 A rejected story keeps its `red-approved` label, so rework actions carry
 the correct phase automatically.
 
+**GREEN is ALWAYS a fresh spawn.** NEVER resume the RED developer's
+conversation for the GREEN phase, even though its handle is recorded. The
+RED-to-GREEN boundary is a deliberate context wall: the implementation must
+be constrained by the committed tests, not by the RED author's intent. pvg
+enforces this structurally -- GREEN dispatches as a new-developer action,
+which never carries `resume_agent` -- and the GREEN completion overwrites
+the recorded handle (`pvg loop agent set`). Resuming WITHIN a phase is fine:
+a rejected RED delivery may resume the RED developer for RED rework, and a
+rejected GREEN delivery may resume the GREEN developer.
+
 ## Story Merge (After PM Approves)
 
 After PM-Acceptor accepts a story, merge it immediately. Pre-merge checks,
 each as its own command:
 
-1. `git worktree list` -- if any worktree still holds `story/<ID>` (e.g. a
-   leftover dev worktree), remove it with `pvg worktree remove <path>`; a
-   held branch blocks deletion after merge.
-2. `git status --porcelain` -- must be clean. If `.vault/backlog-snapshot/`
-   is dirty, run `pvg nd sync --commit` first.
+1. `git worktree list` -- if any worktree still holds `story/<ID>`
+   (including the retained dev worktree -- the resume anchor is no longer
+   needed once the story is accepted), remove it with
+   `pvg worktree remove <path>`; a held branch blocks deletion after merge.
+2. `git status --porcelain` -- must be clean.
 
 ```bash
 pvg story merge <STORY-ID>
 ```
+
+After the merge completes, run `pvg nd sync` -- the accepted-story merge is
+one of the dispatcher's owned sync points (it snapshots, fetches, merges,
+and pushes the `nd/backlog` branch). Then clear the story's recorded agent
+handles: `pvg loop agent clear <STORY-ID>` (both roles -- see Semi-Persistent
+Story Agents).
 
 For any MANUAL git merge (gates, recovery): never chain `git checkout` and
 `git merge` with `;` -- if the checkout aborts (dirty tree), the merge still
@@ -488,8 +655,15 @@ Validate that the completed epic delivered real value:
 Epic branch: epic/EPIC_ID
 ```
 
-If the Anchor returns GAPS_FOUND, address the gaps (spawn developer to fix,
-or escalate to user) before proceeding. Do NOT merge to main with open gaps.
+Anchor verdicts are prefixed for reliable parsing: milestone reviews return
+`REVIEW_RESULT: VALIDATED` or `REVIEW_RESULT: GAPS_FOUND`; backlog reviews
+return `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: REJECTED`. (The Sr-PM/
+Anchor backlog review loop caps at 3 rounds; after that, escalate the
+remaining findings to the user.)
+
+If the Anchor returns `REVIEW_RESULT: GAPS_FOUND`, address the gaps (spawn
+developer to fix, or escalate to user) before proceeding. Do NOT merge to
+main with open gaps. Proceed only on `REVIEW_RESULT: VALIDATED`.
 
 **Step 3: Merge to Main**
 
@@ -528,26 +702,28 @@ pvg nd update EPIC_ID --add-label accepted
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
 errors, parallel calls may be cancelled -- losing the nd update.
 
-**Then snapshot the backlog for git durability.** The live nd vault lives under
-git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
-tracked snapshot. Run it on main after every epic merge and commit the result:
+**Then sync the backlog branch.** The live nd vault lives under
+git-common-dir and is NOT part of git history; durability is nd-native.
+Every nd mutation auto-snapshots locally to the `nd/backlog` git branch, and
+`pvg nd sync` delegates to `nd sync`: snapshot + fetch + field-aware merge +
+push of that branch. Run it here, as at every accepted story merge and at
+loop end:
 
 ```bash
-pvg nd sync --commit   # export + stage + commit in one atomic step
-git push origin main
+pvg nd sync            # snapshot + fetch + merge + push of nd/backlog
+pvg nd sync --status   # show local/remote position without syncing
+pvg nd sync --no-push  # sync but skip the push
 ```
 
-Sync and commit must never be separated: a tracked snapshot left dirty
-breaks checkouts mid-loop and shows as phantom modifications. If you ever
-find `.vault/backlog-snapshot/` dirty mid-loop, run `pvg nd sync --commit`
-immediately (never `git checkout --` it away -- that discards the freshest
-export). Automation (cron snapshots) must use `pvg nd sync --out <dir>` so
-it never touches the working tree.
+`--commit` remains as a deprecated alias for a plain sync; the old export to
+`.vault/backlog-snapshot/` is retired. `pvg doctor` now runs an
+nd-sync-status check instead of the old snapshot-drift check.
 
-(`pvg nd restore` re-imports the snapshot into an empty live vault after a
-fresh clone.) `.vault/knowledge/` and `.vault/backlog-snapshot/` are the ONLY
-tracked paths under `.vault/`, and they are committed only by you -- the
-dispatcher, on main. Agents never stage anything under `.vault/`.
+(`pvg nd restore` delegates to `nd sync --restore`: it rebuilds a wiped live
+vault from the `nd/backlog` branch, with a legacy snapshot fallback.)
+`.vault/knowledge/` is the ONLY tracked path under `.vault/`, and it is
+committed only by you -- the dispatcher, on main, after retro. Agents never
+stage anything under `.vault/`.
 
 Then clean up all story branches for this epic:
 
@@ -571,7 +747,7 @@ git checkout epic/EPIC_ID
 git pull origin epic/EPIC_ID
 gh pr create --base main --head "epic/EPIC_ID" \
   --title "merge(main): complete EPIC_ID" \
-  --body "All stories accepted. Full test suite passing. Anchor review: VALIDATED."
+  --body "All stories accepted. Full test suite passing. Anchor review: REVIEW_RESULT: VALIDATED."
 ```
 
 If your environment provides PR automation, use it and continue unattended.
@@ -654,20 +830,39 @@ To cancel: `/piv-cancel-loop` or `pvg loop cancel`
 | Role | Worktree path | Branch |
 |------|---------------|--------|
 | Developer | `.claude/worktrees/dev-<STORY_ID>` | `story/<STORY_ID>` |
-| PM-Acceptor | `.claude/worktrees/pm-<STORY_ID>` | `story/<STORY_ID>` |
+| PM-Acceptor | `.claude/worktrees/pm-<STORY_ID>` | detached at `story/<STORY_ID>` (only if a worktree is used at all) |
 
-All worktrees check out the SAME story branch. The worktree is disposable;
-the story branch is the durable record.
+The worktree is disposable; the story branch is the durable record. The dev
+worktree doubles as the story's RESUME ANCHOR while `loop.agent_resume` is
+enabled (see Semi-Persistent Story Agents).
 
 ### Flow
 1. Dispatcher creates story branch
 2. Dispatcher creates dev worktree on story branch
 3. Developer works, commits, pushes on story branch
 4. Developer marks delivered
-5. Dispatcher removes dev worktree: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
-6. Dispatcher creates PM worktree on same story branch
-7. PM reviews, dispatcher removes PM worktree: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/pm-<STORY_ID>`
-8. If accepted: merge story to epic, delete story branch
+5. Dispatcher records the developer handle (`pvg loop agent set`). With
+   `loop.agent_resume` enabled (the default), KEEP the dev worktree -- it is
+   the resume anchor across any rejection rounds; it is removed at
+   accept+merge (step 8) or by recovery. Only when resume is disabled,
+   remove it now: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
+6. PM reviews on its no-worktree diff path (`git diff
+   origin/epic/<EPIC>...origin/story/<ID>`, `git show`) -- no checkout
+   needed. If a PM worktree is used at all, it must check the story out
+   DETACHED (`git checkout --detach story/<STORY_ID>`): the retained dev
+   worktree holds the branch ref, and git locks the ref, not the commit
+7. If a PM worktree was created, dispatcher removes it: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/pm-<STORY_ID>`
+8. If accepted: remove the retained dev worktree (pre-merge checks), merge
+   story to epic, delete story branch, then clear the recorded handles:
+   `pvg loop agent clear <STORY_ID>`
+9. If rejected: the loop emits a rework action. When it carries
+   `resume_agent`, resume the recorded developer per Semi-Persistent Story
+   Agents -- the PM rejection content is the message body, and the retained
+   dev worktree is the resume anchor. Otherwise (no handle, resume cap
+   reached, resume disabled, RESUME_MISS, or any resume failure) re-create
+   the dev worktree at the IDENTICAL path if missing and re-spawn a fresh
+   developer with the rejection feedback. (After the third rejection of the
+   same story the loop emits `escalate` -- see Dispatcher Rules)
 
 ### Cleanup
 
@@ -691,8 +886,12 @@ removal, and `pvg worktree remove` catches it if you forget.
 the branch is the record. Story branches are deleted ONLY after merging to the epic branch.
 
 ### Branch Locking
-Git prevents two worktrees on the same branch. Dev worktree MUST be removed
-before PM worktree can be created.
+Git prevents two worktrees from checking out the same branch ref
+simultaneously. The retained dev worktree holds `story/<STORY_ID>` across
+the review cycle (it is the resume anchor -- see Semi-Persistent Story
+Agents), so any PM worktree must check the story out DETACHED
+(`git checkout --detach story/<STORY_ID>`), which git always allows. Only a
+plain branch checkout would require removing the dev worktree first.
 
 ## CWD Safety (CRITICAL -- read this before any worktree operation)
 
@@ -770,4 +969,6 @@ After context compaction, run recovery:
 pvg loop recover
 ```
 
-This cleans orphan worktrees, resets orphaned in-progress stories, and outputs a recovery summary.
+This cleans orphan worktrees, resets orphaned in-progress stories, clears
+recorded agent handles (subsequent rework takes the fresh-spawn path), and
+outputs a recovery summary.

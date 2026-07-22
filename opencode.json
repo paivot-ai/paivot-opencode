@@ -8,12 +8,12 @@
       "prompt": ".opencode/agent/paivot-sr-pm.md"
     },
     "paivot-pm": {
-      "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes. Ephemeral -- spawned for one delivered story, then disposed.",
+      "description": "Evidence-based review of delivered stories; accepts or rejects with detailed notes. Ephemeral per story -- spawned for one delivered story; may be resumed to re-review that same story after a rework round.",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-pm.md"
     },
     "paivot-developer": {
-      "description": "Implements story with tests; records proof of passing tests; marks delivered using the Paivot contract. Ephemeral -- spawned for one story, then disposed.",
+      "description": "Implements story with tests; records proof of passing tests; marks delivered using the Paivot contract. Ephemeral per story -- spawned for one story; may be resumed for rework on that same story after a PM rejection.",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-developer.md"
     },
@@ -33,7 +33,7 @@
       "prompt": ".opencode/agent/paivot-business-analyst.md"
     },
     "paivot-anchor": {
-      "description": "Adversarial reviewer in two modes: (1) BACKLOG REVIEW -- find gaps, missing walking skeletons, horizontal layers. (2) MILESTONE REVIEW -- validate real delivery, inspect tests for mocks.",
+      "description": "Adversarial reviewer in two modes: (1) BACKLOG REVIEW -- find gaps, missing walking skeletons, horizontal layers. Returns REVIEW_RESULT: APPROVED or REVIEW_RESULT: REJECTED. (2) MILESTONE REVIEW -- validate real delivery, inspect tests for mocks. Returns REVIEW_RESULT: VALIDATED or REVIEW_RESULT: GAPS_FOUND.",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-anchor.md"
     },
@@ -43,17 +43,17 @@
       "prompt": ".opencode/agent/paivot-retro.md"
     },
     "paivot-ba-challenger": {
-      "description": "Adversarial review of BUSINESS.md for omissions, hallucinations, and drift. Only spawned when dnf.specialist_review is enabled.",
+      "description": "Adversarial review of BUSINESS.md for omissions, hallucinations, and drift. Spawned when dnf.specialist_review is enabled (the default).",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-ba-challenger.md"
     },
     "paivot-designer-challenger": {
-      "description": "Adversarial review of DESIGN.md for unmet user needs, hallucinations, and contradictions with BUSINESS.md. Only spawned when dnf.specialist_review is enabled.",
+      "description": "Adversarial review of DESIGN.md for unmet user needs, hallucinations, and contradictions with BUSINESS.md. Spawned when dnf.specialist_review is enabled (the default).",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-designer-challenger.md"
     },
     "paivot-architect-challenger": {
-      "description": "Adversarial review of ARCHITECTURE.md for unmet requirements, untraceable decisions, and contradictions. Only spawned when dnf.specialist_review is enabled.",
+      "description": "Adversarial review of ARCHITECTURE.md for unmet requirements, untraceable decisions, and contradictions. Spawned when dnf.specialist_review is enabled (the default).",
       "mode": "subagent",
       "prompt": ".opencode/agent/paivot-architect-challenger.md"
     }

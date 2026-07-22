@@ -26,6 +26,9 @@ falls back to a branch-local backlog by accident.
    - `pm_acceptor` -> spawn `@paivot-pm`
    - `developer` -> spawn `@paivot-developer`
    - for hard-tdd with `phase=red`, use the RED/GREEN flow
+   - if the action carries `resume_agent`, resume the recorded conversation
+     instead of spawning fresh -- follow Semi-Persistent Story Agents in
+     `/piv-loop` (RESUME_MISS guard included; fresh spawn on any failure)
 
 3. **After the agent finishes**:
    - Scan output for `DISCOVERED_BUG:` blocks. If found, spawn `@paivot-sr-pm` for bug triage.

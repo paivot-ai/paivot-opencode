@@ -32,15 +32,23 @@ workflow.fsm: true
 workflow.sequence: open,in_progress,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: rejected
+dnf.specialist_review: true
+dnf.max_iterations: 3
 dnf.domain_model: false
 architecture.c4: false
 loop.persist_across_sessions: true
+loop.agent_resume: true
 lint.quality_gates:
 lint.brownfield: false
 ```
 
 Notes on selected settings:
 
+- `dnf.specialist_review` (default `true`): adversarial challengers review
+  BUSINESS.md, DESIGN.md, and ARCHITECTURE.md individually before proceeding
+  to the next BLT step (up to `dnf.max_iterations` rounds each, default 3;
+  after exhaustion, BLOCKING findings escalate to the user). Set `false` for
+  the cost-optimized flow where only the Anchor reviews the final backlog.
 - `dnf.domain_model` (default `false`): when enabled, the Architect maintains a
   `*.modelith.yaml` domain model as the machine-checkable twin of ARCHITECTURE.md;
   the Sr PM turns invariants into acceptance criteria and the Anchor checks
@@ -48,6 +56,17 @@ Notes on selected settings:
 - `loop.persist_across_sessions` (default `true`): the execution loop survives
   session boundaries -- agent completions resume it where it left off. Set
   `false` to clear loop state when the session exits, even if work remains.
+- `loop.agent_resume` (default `true`): per-story agent resume for rework and
+  re-review. `pvg loop next` surfaces the recorded agent handle as
+  `resume_agent` on developer-rework and pm-review actions (max 2 resumes per
+  story+role), and the dispatcher resumes that conversation via the task
+  tool's `task_id` instead of spawning a fresh agent. Fresh spawn remains the
+  fallback on any failure (including a RESUME_MISS reply). Set `false` to
+  force always-fresh spawns; recorded handles are simply ignored.
+- Machinery-managed repos (`design.machinery` applies): `pvg lint --backlog`
+  also runs the deterministic `hard-tdd-oracle` check -- ERROR when a story
+  cites oracle stable ids without the `hard-tdd` label. This is automatic on
+  machinery-managed repos, not a setting.
 - `lint.quality_gates`: extra quality-gate patterns (pipe-separated) that the
   `walking-skeleton` check of `pvg lint --backlog` requires in every skeleton's
   AC, on top of its generic defaults. Populated by the Sr PM from the project

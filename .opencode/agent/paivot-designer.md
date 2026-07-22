@@ -31,9 +31,9 @@ QUESTIONS_FOR_USER:
 3. **Receive answers** from orchestrator
 4. **Output QUESTIONS_FOR_USER Round 2** -- MANDATORY unless Round 1 answers were exhaustive. Round 2 covers: design trade-offs, edge cases, error experiences, accessibility, and follow-ups on Round 1 gaps.
 5. **If ambiguities still remain**, output QUESTIONS_FOR_USER Round 3+
-6. **Only after receiving answers to at least two rounds** (or one genuinely exhaustive round): produce DESIGN.md
+6. **Only after receiving answers to at least two rounds** (or one genuinely exhaustive round): produce DESIGN.md. This two-round minimum applies to full D&F only; Light D&F Mode (below) explicitly overrides it to a one-round minimum.
 
-My FIRST output in any D&F engagement MUST be a QUESTIONS_FOR_USER block. No exceptions. I do NOT produce DESIGN.md on my first turn. I do NOT produce DESIGN.md after only one round of questions unless the answers were comprehensive and I can justify skipping Round 2.
+My FIRST output in any D&F engagement MUST be a QUESTIONS_FOR_USER block. No exceptions. I do NOT produce DESIGN.md on my first turn. In full D&F, I do NOT produce DESIGN.md after only one round of questions unless the answers were comprehensive and I can justify skipping Round 2.
 
 ### Design Focus (CRITICAL -- I am NOT a technical architect)
 
@@ -75,7 +75,7 @@ I do NOT stop asking until:
 
 ### Light D&F Mode
 
-In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still MUST complete at least 1 round before producing DESIGN.md. Light means fewer rounds, not zero rounds.
+In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. Light mode explicitly overrides the two-round minimum in the Mandatory Execution Sequence: one completed round is sufficient (the two-round minimum applies to full D&F only). I still MUST complete at least 1 round before producing DESIGN.md. Light means fewer rounds, not zero rounds.
 
 ## Agent Operating Rules (CRITICAL)
 

@@ -64,19 +64,22 @@ Ask: "This is the proposed backlog and order. Want to reorder, cut, merge, or ad
 
 ## Phase 5: Execute
 
-### Concurrency Limits (HARD RULE)
+Execution belongs to `/piv-loop`, not to intake. Intake's scope ends at
+feedback capture + Sr PM backlog creation + user triage.
 
-Heavy stacks (Rust, iOS/Swift, C#, CF Workers): max 2 dev, 1 PM, 3 total
-Light stacks (Python, non-CF TS/JS): max 4 dev, 2 PM, 6 total
+Once the user approves the backlog:
 
-### Execution Loop
+1. Report that the backlog is ready and that `/piv-loop` executes it: stories
+   run on story branches in dispatcher-managed worktrees, contained within
+   their epic, through the loop's story helpers (`pvg story claim` ->
+   developer -> `pvg story deliver` -> PM-Acceptor review -> `pvg story
+   accept`), with the epic completion gate at the end.
+2. If the user wants execution to start now, invoke `/piv-loop`.
 
-Work through the approved backlog top-to-bottom. For each story:
-
-1. Spawn `@paivot-developer` to implement
-2. Spawn `@paivot-pm` to review
-3. Capture learnings to vault
-4. Move to next story
+Do NOT run a pre-loop story cycle from intake: do not spawn developers or
+PM-Acceptors here, and do not mutate story status by hand
+(`pvg nd update --status ...`) -- claiming, delivery, and acceptance go
+through the loop's story helpers.
 
 ## Constraints
 

@@ -96,11 +96,12 @@ For multi-branch execution, the mutable nd backlog must be branch-independent.
 Use a shared nd vault resolved from the repository's git common dir rather than
 branch-local `.vault/issues/` copies.
 
-The shared live vault is not part of git history, so durability comes from
-snapshots: at each epic completion gate the dispatcher runs `pvg nd sync` to
-export the backlog into a tracked `.vault/backlog-snapshot/` and commits it on
-main. After a fresh clone, `pvg nd restore` re-imports the snapshot into an
-empty live vault.
+The shared live vault is not part of git history, so durability is nd-native:
+every nd mutation auto-snapshots to the `nd/backlog` git branch; `pvg nd sync`
+(delegating to `nd sync`) fetches, merges, and pushes that branch, and
+`pvg nd restore` (delegating to `nd sync --restore`) rebuilds a wiped vault
+from it after a fresh clone. The dispatcher syncs at loop setup, after each
+accepted story merge, and at loop end.
 
 Paivot standardizes on `pvg nd` so shared-backlog routing is structural rather than remembered.
 Use it instead of bare `nd` whenever you are querying or mutating the live backlog.
@@ -151,15 +152,19 @@ All agents run on the single top-level `model` default (see Model Portability ab
 | `@paivot-architect` | Designs system architecture, owns ARCHITECTURE.md |
 | `@paivot-designer` | Captures user needs for all product types, owns DESIGN.md |
 | `@paivot-business-analyst` | Iterative business discovery, owns BUSINESS.md |
-| `@paivot-ba-challenger` | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
-| `@paivot-designer-challenger` | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
-| `@paivot-architect-challenger` | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
+| `@paivot-ba-challenger` | Adversarial review of BUSINESS.md (default-on; disable via `dnf.specialist_review=false`) |
+| `@paivot-designer-challenger` | Adversarial review of DESIGN.md (default-on; disable via `dnf.specialist_review=false`) |
+| `@paivot-architect-challenger` | Adversarial review of ARCHITECTURE.md (default-on; disable via `dnf.specialist_review=false`) |
 | `@paivot-anchor` | Adversarial reviewer -- backlogs and milestones |
 | `@paivot-retro` | Harvests learnings from completed epics |
 
 ## Execution Workflow
 
-The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Two structural gates enforce quality:
+The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Stories are claimed atomically at dispatch: `pvg story claim` delegates to `nd claim`, so a claim failure means another agent already holds the story (it is skipped, never raced), and `pvg story release` returns a claimed story to open. After 3 PM rejections of the same story the loop escalates to the user instead of dispatching more rework -- the dispatcher never overrides the PM.
+
+**Semi-persistent story agents:** within a session, the dispatcher records each developer and PM session handle (`pvg loop agent set`) and resumes the same conversation for rework and re-review (`resume_agent` on the loop action, delivered via the task tool's `task_id`, up to 2 resumes per story and role) instead of spawning fresh. A resumed agent keeps its full conversation -- rework costs a fraction of a fresh spawn, and the developer can refute erroneous rejection claims from memory -- while its shell state resets. Because OpenCode silently falls back to a fresh child on a stale `task_id`, every resume message opens with a RESUME_MISS guard; a RESUME_MISS reply (or any other failure) falls back to a fresh spawn, and handles clear on acceptance (`pvg loop agent clear`) and on recovery. Kill switch: `pvg settings loop.agent_resume=false` forces always-fresh spawns.
+
+Two structural gates enforce quality:
 
 **Story gate:** Every story must have passing integration tests with no mocks before the PM-Acceptor will accept it. Tests gated behind env vars or skipped tests are rejected on sight.
 
@@ -170,9 +175,9 @@ The execution loop (`/piv-loop`) drives stories through development, review, and
 3. **Merge to main** -- depends on `workflow.solo_dev` setting:
    - `true` (default): merge directly to main, push, delete epic and story branches
    - `false`: create a PR for team review
-4. **Snapshot + retro** -- the dispatcher exports the backlog (`pvg nd sync`) and
-   commits `.vault/backlog-snapshot/` on main, then spawns the retro agent and
-   commits its `.vault/knowledge/` notes.
+4. **Sync + retro** -- the dispatcher runs `pvg nd sync` (pushing the nd-native
+   `nd/backlog` branch), then spawns the retro agent and commits its
+   `.vault/knowledge/` notes on main.
 
 Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
 

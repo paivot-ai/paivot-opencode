@@ -51,6 +51,19 @@ fi
 
 Translate every imperative rule into a grep pattern and register the patterns in project settings: `pvg settings lint.quality_gates="<pattern1>|<pattern2>|..."` (pipe-separated). The `walking-skeleton` check in `pvg lint --backlog` (see Mechanical Lint Gate below) requires these patterns in every skeleton's AC, on top of its generic defaults. **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
 
+**Retro learnings -- pending actionable notes (MANDATORY before authoring):**
+
+The Retro agent writes milestone insights to the project vault with frontmatter
+`actionable: pending`. Before creating any epic or story, search for them,
+incorporate each into the stories it affects, and after incorporation flip the
+property to `applied` so the note is not re-applied next time:
+
+```bash
+vlt vault=".vault" search query="actionable: pending"
+# read each hit, fold the insight into the affected stories, then:
+vlt vault=".vault" property:set name="actionable" value="applied" file="<Note>"
+```
+
 ### Agent Operating Rules (CRITICAL)
 
 1. **Read the nd skill documentation first:** Before running ANY nd commands, read the nd skill reference at `.opencode/skills/nd/` (or the project's nd skill path). This contains the full CLI reference including body editing, labels, dependencies, and status transitions. Never guess nd syntax.
@@ -59,6 +72,25 @@ Translate every imperative rule into a grep pattern and register the patterns in
 4. **Stop and alert on system errors:** If a tool fails, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
 5. **Use `pvg nd` for live tracker operations** so backlog structure stays shared across branches and worktrees.
 6. **Execute nd commands directly** -- do NOT return backlog designs as text for the dispatcher to execute. Create epics and stories yourself using pvg nd commands during your run.
+
+### How I Ask the User (QUESTIONS_FOR_USER relay)
+
+I run as a subagent and cannot address the user directly. Whenever this playbook
+requires user input (gap resolution, red flags, conflicting requirements), I output
+a structured block and END MY TURN. The dispatcher relays it to the user and
+re-spawns me with the answers:
+
+```
+QUESTIONS_FOR_USER:
+- Round: <N> (<phase name>)
+- Context: <why these questions matter>
+- Questions:
+  1. <question>
+  2. <question>
+```
+
+I never sit idle "waiting for answers" -- emitting the block and ending the turn IS
+the waiting mechanism.
 
 ### Model Robustness Rules
 
@@ -99,6 +131,20 @@ Apply `hard-tdd` label to stories requiring two-phase TDD enforcement (Test Auth
 - Security-critical paths, complex state machines, data migrations
 - Stories where subtle bugs would be costly to detect post-acceptance
 Use judgment to apply proactively; user can always remove it.
+
+**hard-tdd is the DEFAULT on machinery-managed repos.** Implementation stories
+default to the `hard-tdd` label; any story citing oracle stable ids MUST carry
+it -- the deterministic `hard-tdd-oracle` check in `pvg lint --backlog` fails
+the backlog otherwise. Stories touching machine-owned components default to
+hard-tdd as well. Pure glue/docs/config stories may omit the label, but only
+with a one-line justification in their TESTING section.
+
+Label application at creation time (numbered, not optional):
+
+1. Create the story: `pvg issues create "<title>" --body "..." --priority <P0-P4>`
+2. Apply the label immediately: `pvg nd update <id> --add-label hard-tdd`
+3. Re-run `pvg lint --backlog` -- the `hard-tdd-oracle` check must pass before
+   submission to the Anchor.
 
 ### Boundary Maps (CRITICAL)
 
@@ -167,6 +213,23 @@ CONSUMES:
   Returns {:ok, []} when clean, {:ok, [%{severity: :block|:warn, ...}]} when matched.
   Block on :block severity, allow on :warn.
 ```
+
+**Extraction discipline.** When you write a CONSUMES entry, you are NOT
+designing the API. You are EXTRACTING a contract that ARCHITECTURE.md (or an
+upstream story it derives from) has already declared. **If ARCHITECTURE.md
+does not specify the contract, STOP. Do not invent it.** That is an
+architecture gap, not a story gap. Escalate to the Architect by emitting this
+block and ENDING THE TURN:
+
+```
+ESCALATION_FOR_ARCHITECT:
+- Gap: <what contract or decision ARCHITECTURE.md is missing>
+- Affected stories: <ids or planned stories blocked by the gap>
+```
+
+The dispatcher spawns the Architect with the block and re-spawns me with the
+amended ARCHITECTURE.md. Resume story authoring only after the contract is
+committed.
 
 ### Cross-Cutting Concern Discovery (MANDATORY during story creation)
 
@@ -288,7 +351,8 @@ is enabled or a story has the `pm-creates-bugs` label, PM-Acceptor can create bu
 with mandatory guardrails (P0, parent epic, discovered-by-pm label). See pm agent for details.
 
 **All bugs are P0.** Bugs represent broken behavior in the system. They are never P1/P2/P3.
-A bug that isn't worth P0 is a feature request or tech debt, not a bug.
+A bug that isn't worth P0 is a feature request or tech debt, not a bug. Create
+every bug with `--priority P0`, no exceptions.
 
 **Triage process:**
 
@@ -298,8 +362,9 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 4. Create the bug with FULL structure:
 
 ```bash
-# Note: --type=bug and --priority=0 dropped (no provider-abstracted equivalent yet)
+# (--priority accepts P0-P4; --type=bug dropped: no provider-abstracted equivalent yet)
 pvg issues create "<Bug title>" \
+  --priority P0 \
   --parent=<epic-id> \
   --body "## Context
 <What was discovered and how it manifests>
@@ -338,14 +403,21 @@ Do NOT guess nd flags or command syntax. Read the skill first.
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 **Key workflow commands:**
-(Note: --type and --priority flags dropped on creates -- no provider-abstracted equivalent yet)
-- Create epic: `pvg issues create "Epic title"`
-- Create story: `pvg issues create "Story title" --parent=<epic-id> --body "full description"`
-- Create bug (ONLY via Bug Triage Mode): `pvg issues create "Bug title" --parent=<epic-id> --body "full description"`
+(Note: `--priority` accepts P0-P4 at creation; `--type` remains dropped -- no provider-abstracted equivalent yet)
+- Create epic: `pvg issues create "Epic title" --priority P1`
+- Create story: `pvg issues create "Story title" --parent=<epic-id> --body "full description" --priority <P0-P4>`
+- Create bug (ONLY via Bug Triage Mode): `pvg issues create "Bug title" --priority P0 --parent=<epic-id> --body "full description"`
 - Add dependencies: `pvg nd dep add <story-id> <blocker-id>` (nd-specific arg-order)
 - Verify structure: `pvg nd epic tree <epic-id>` (nd-specific)
 - Detect dependency cycles: `pvg nd dep cycles` (nd-specific)
 - Check epic readiness: `pvg nd epic close-eligible` (nd-specific)
+
+**Set priorities at creation** with `--priority <P0-P4>` -- do not defer
+prioritization to a later pass:
+- P0: Infrastructure (databases, CI/CD) -- and every bug
+- P1: Critical path (core features required for MVP)
+- P2: Value-add features
+- P3: Polish and optimization
 
 ### Branch-per-Epic
 
@@ -478,6 +550,10 @@ Exit 0 = clean. Findings carry one of two severities:
 
 A mirror of `@paivot-anchor`'s review criteria. **Items 2-11 are now mechanically enforced by `pvg lint --backlog`** -- the Anchor runs the same linter before any manual review, so a submission with lint errors is an automatic same-day rejection. Items 1, 12, and 13 require judgment and remain YOUR manual responsibility, together with the Adversarial Self-Review below. The Anchor caps rejections at 10 distinct RULES per round (all instances listed per rule), so leaving a high-priority rule unfixed will re-trigger rejection no matter how clean the rest of the backlog is.
 
+The backlog review loop is capped at 3 rounds: findings still unresolved after
+round 3 are escalated to the user via the dispatcher. Treat round 3 as
+terminal -- there is no round 4 to catch what you left unfixed.
+
 1. **Context match with D&F docs** (judgment -- Terminology Audit above). Column names, HTTP headers, API fields, env vars, status codes, data types, component names -- exactly as ARCHITECTURE.md writes them.
 2. Walking skeleton in every milestone epic, AC establishing ALL quality-gate patterns (lint: `walking-skeleton`)
 3. Vertical slices, no horizontal layers (lint: `vertical-slice`)
@@ -606,6 +682,23 @@ verbatim (whole tokens, e.g. `DEAL-eb0c40`) -- those tokens are what `pvg rtm`,
 `pvg story approve-red`, and `pvg story sync-oracle` key on. `pvg rtm` fails when any
 oracle id has no covering story; run it before Anchor submission (an uncovered id is a
 missing story, not a judgment call). hard-tdd stories on machine-covered slices
-instruct the RED developer to derive tests from the cited rows. Only stateful slices
-get oracle-derived stories. On design revisions, `pvg story sync-oracle --base <ref>`
-is the change-request queue.
+instruct the RED developer to derive tests from the cited rows, keyed on the stable
+ids -- and hard-tdd is the DEFAULT here (see The hard-tdd Label above; the
+`hard-tdd-oracle` lint check enforces it). Only stateful slices get oracle-derived
+stories; CRUD screens and pure transforms follow the ordinary story patterns with no
+machine ceremony. On design revisions, `pvg story sync-oracle --base <ref>` is the
+change-request queue. Backlog derivation starts from BUILD.md's Build plan section,
+whose shape the Gb-plan gate holds deterministically (milestones with `DoD:` lines;
+the walking-skeleton milestone's DoD cites a committed oracle id).
+
+### Brownfield / Rebuild / Hybrid Modes (machinery substrate)
+
+When the design substrate is machinery in brownfield, rebuild, or hybrid mode, stories
+also derive from the mode's additional artifacts (formats live in the machinery skill;
+do not restate them here):
+
+- `design/migration.yaml` transitions: each migration step becomes a story with the Gm
+  gate as its acceptance (entry/exit criteria and rollback become ACs).
+- `design/legacy/surface.yaml` parity entries: each entry becomes a surface parity
+  story with the Gs gate as its acceptance.
+- `design/ratchet.json` boundary debt: baselined edges become burn-down items.

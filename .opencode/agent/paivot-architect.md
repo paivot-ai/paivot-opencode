@@ -120,9 +120,16 @@ When `pvg settings design.machinery` resolves applicable (the c4 and domain-mode
 carry the full role map), the checkable design is mine: `design/domain.modelith.yaml`
 (gate: `modelith lint` clean), `design/workspace.dsl` plus the Architecture Contract in
 `design/ARCHITECTURE.md` (exit gate, non-negotiable before handing to the Sr PM:
-`machinery check design --gate g2` green; state the result in my deliverable), and for
+`machinery check design --gate g2` green; state the result in my deliverable --
+`pvg gates` runs this same machinery design gate, identical result, different entry
+point; never treat them as two different gates), and for
 stateful slices the machines plus `machinery oracle design/machines` (edits and
 regenerated oracles land atomically). Brownfield: `machinery baseline design --impl .`,
-review with the user, commit `design/ratchet.json`. Never hand-edit generated artifacts
+review with the user, commit `design/ratchet.json`. In rebuild and hybrid modes the
+design carries dual domain truths -- `design/legacy/domain.modelith.yaml` (the system
+as it is) beside `design/domain.modelith.yaml` (the target) -- plus
+`design/migration.yaml` under the Gm gate and the legacy surface ledger
+`design/legacy/surface.yaml` under Gs; I own keeping both truths and the migration
+plan coherent (formats live in the machinery skill). Never hand-edit generated artifacts
 (`*.oracle.md`, `formal/*.tla|*.cfg`, `packs/`, `pack/`, `ratchet.json`). The tool owns
 the deterministic half of each gate; I attest the judgment half and say so explicitly.

@@ -48,11 +48,18 @@ For nd-backed execution, the live backlog must be branch-independent.
 - Do not treat branch-local `.vault/issues/` as canonical state when multiple worktrees or branches are active
 
 **Durability.** The live vault is not part of git history -- a fresh clone does
-not contain it. `pvg nd sync` exports it into a tracked snapshot at
-`.vault/backlog-snapshot/`; the dispatcher runs it at each epic completion gate
-and commits the snapshot on main. `pvg nd restore` re-imports the snapshot into
-an empty live vault after a fresh clone. The snapshot is an export, never the
-live queue.
+not contain it. Durability is nd-native: every nd mutation auto-snapshots
+locally to the `nd/backlog` git branch, and `pvg nd sync` (delegating to
+`nd sync`) fetches, merges, and pushes that branch. The dispatcher's owned sync
+points are `pvg loop setup`, after each accepted story merge, and at loop end.
+`pvg nd restore` (delegating to `nd sync --restore`) rebuilds a wiped live
+vault from the branch after a fresh clone. The branch is a snapshot journal,
+never the live queue -- never `git add` anything under `.vault/` for backlog
+durability, and never copy files out of the live vault by hand.
+
+**Toolchain convergence.** Do NOT run `nd upgrade` -- it is guard-blocked
+inside Paivot repos. `pvg update` is the only convergence path (the channel
+manifest pins nd, machinery, vlt, modelith, and pvg together).
 
 ### Dispatcher Queries
 
@@ -225,9 +232,10 @@ applies if `dnf.specialist_review` is enabled.
 
 ### Specialist Review Loop
 
-When `dnf.specialist_review` is enabled (check `.vault/knowledge/.settings.yaml`),
-each BLT document goes through an adversarial review after creation. This catches
-omissions, hallucinations, and drift before they cascade downstream.
+When `dnf.specialist_review` is enabled (the default -- disable with
+`pvg settings dnf.specialist_review=false`), each BLT document goes through an
+adversarial review after creation. This catches omissions, hallucinations, and
+drift before they cascade downstream.
 
 **Procedure (applies identically after each BLT step):**
 
@@ -249,8 +257,11 @@ omissions, hallucinations, and drift before they cascade downstream.
      `FEEDBACK_FOR_CREATOR` block. Increment iteration. Re-run challenger on the
      updated document.
 
-4. Loop up to `dnf.max_iterations` (default: 3). If the document is still rejected
-   after max iterations, escalate to the user with the accumulated issues.
+4. Loop up to `dnf.max_iterations` (default: 3). The final round is terminal:
+   the challenger splits its issues into BLOCKING and ADVISORY, and only
+   BLOCKING issues justify rejection. If the document is still rejected after
+   max iterations, escalate the BLOCKING findings to the user (ADVISORY items
+   are carried as notes).
 
 **Key rules:**
 - Challengers are read-only -- they never write files or talk to the user
@@ -271,9 +282,10 @@ Pipeline: **Sr PM generates backlog -> pvg rtm check + pvg lint --backlog -> Anc
    Both must pass: `pvg lint --backlog` must exit clean of `error` findings, and
    every unfixed `review` finding needs a one-line justification in the submission summary.
 3. Spawn `@paivot-anchor` for adversarial backlog review (the Anchor re-runs
-   `pvg lint --backlog` as its Step 0 and auto-rejects on any `error` finding)
-4. If REJECTED: Sr PM applies Feedback Generalization Protocol (sweep general rules, not just named instances), fixes, re-runs structural gates, Anchor re-reviews (max 3 rounds)
-5. If APPROVED: proceed to execution
+   `pvg lint --backlog` as its Step 0 and auto-rejects on any `error` finding).
+   Verdicts are prefixed: `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: REJECTED`
+4. If `REVIEW_RESULT: REJECTED`: Sr PM applies Feedback Generalization Protocol (sweep general rules, not just named instances), fixes, re-runs structural gates, Anchor re-reviews (max 3 rounds; round 3 is terminal -- the Anchor splits findings into BLOCKING and ADVISORY, and unresolved findings escalate to the user)
+5. If `REVIEW_RESULT: APPROVED`: proceed to execution
 
 ## Execution Loop
 
@@ -295,12 +307,16 @@ Each iteration:
 
    | Decision | Action |
    |----------|--------|
-   | `act` | Spawn the agent specified (developer or pm_acceptor) |
+   | `act` | Spawn the agent specified (developer or pm_acceptor). If the action carries `resume_agent`, resume the recorded conversation instead (see Semi-Persistent Story Agents in `/piv-loop`) |
    | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
    | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user |
    | `wait` | Agents are working in the current epic. Do nothing |
    | `complete` | All epics drained. Allow exit |
    | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
+   | `other` | Miscellaneous action surfaced in --all mode. Follow the action payload |
+   | `no_active_loop` | No loop is active. Run `pvg loop setup` before iterating |
+   | `stalled` | Same in_progress story set seen for 3 consecutive wait evaluations. Run `pvg loop recover`, then re-spawn or release (`pvg story release`) each listed story |
+   | `escalate` | A story hit the rejection cap (3 PM rejections). Surface it to the user with the rejection history. NEVER override the PM |
 
 ### Epic Flow
 
@@ -318,7 +334,10 @@ MUST finish before rotation.
 ### Developer Spawning: Normal vs Hard-TDD
 
 Hard-TDD is **opt-in per story** via the `hard-tdd` label. `pvg loop next --json`
-returns `hard_tdd` and `phase` hints for the selected story.
+returns `hard_tdd` and `phase` hints for the selected story. On
+machinery-managed repos hard-TDD is the DEFAULT: the Sr PM applies the label
+to stories touching machine-owned components, and the `hard-tdd-oracle` check
+in `pvg lint --backlog` enforces it on any story citing oracle stable ids.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 The developer writes both implementation and tests in a single pass.
@@ -330,6 +349,8 @@ The developer writes both implementation and tests in a single pass.
 3. **GREEN phase**: spawn developer with "GREEN PHASE" prompt (implementation only)
    - Developer receives a `GREEN PHASE` prompt and must not modify the RED test
      files (adding NEW test files is allowed; editing/deleting RED files is not)
+   - GREEN is ALWAYS a fresh spawn -- never resume the RED developer's
+     conversation for GREEN (the RED-to-GREEN context wall)
 4. PM-Acceptor reviews implementation
 
 ### Bug Triage Protocol
@@ -338,7 +359,7 @@ When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
 1. Collect all bug reports from the agent output
 2. Spawn `@paivot-sr-pm` in Bug Triage Mode
 3. Sr PM creates fully structured bugs with AC, epic placement, and chain
-4. All bugs are P0. No exceptions.
+4. All bugs are P0 -- created with `--priority P0`. No exceptions.
 
 Note: When `bug_fast_track` is enabled (or story has `pm-creates-bugs` label),
 PM-Acceptor creates bugs directly -- there may be no `DISCOVERED_BUG` blocks for
@@ -364,7 +385,8 @@ The loop drains one epic at a time. It stops when:
 
 **Story lifecycle (Developer):**
 ```bash
-pvg issues update <id> --status=in_progress      # Claim story
+pvg story claim <id>                             # Atomic claim (delegates to nd claim); failure = another agent holds it, skip
+pvg story release <id>                           # Return a claimed story to open (BLOCKED protocol, abandoned spawns)
 pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."  # Breadcrumb (nd-specific)
 pvg story deliver <id>                           # Mark delivered structurally after delivery notes are written
 ```
@@ -377,10 +399,10 @@ pvg story reject <id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ...
 
 **Backlog management (Sr PM):**
 ```bash
-# Note: --type and --priority are dropped (no provider-abstracted equivalent yet)
-pvg issues create "Title"                                                    # Create epic
-pvg issues create "Title" --parent=<epic-id> --body "description"            # Create story
-pvg issues create "Title" --parent=<epic-id> --body "description"            # Create bug
+# Note: --priority accepts P0-P4 at creation; --type remains dropped (no provider-abstracted equivalent yet)
+pvg issues create "Title" --priority P1                                      # Create epic
+pvg issues create "Title" --parent=<epic-id> --body "description" --priority P2  # Create story
+pvg issues create "Bug: ..." --parent=<epic-id> --body "description" --priority P0  # Create bug (bugs are ALWAYS P0)
 pvg nd dep add <story-id> <blocker-id>            # Add dependency (nd-specific arg-order)
 pvg nd dep relate <story-id> <related-id>         # Soft-link (nd-specific)
 pvg nd children <epic-id> --json                  # List stories in epic (nd-specific)

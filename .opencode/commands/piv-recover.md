@@ -15,8 +15,11 @@ Recover from a crash, context compaction, or inconsistent state.
    ```
    This automatically:
    - Reads the snapshot file (if one exists)
-   - Removes orphan worktrees and their branches
+   - Removes orphan worktrees and their branches (unmerged story branches are
+     preserved -- committed work survives recovery)
    - Resets orphaned in-progress stories to `open` in nd (delivered stories preserved)
+   - Clears recorded story-agent resume handles (`pvg loop agent list` to
+     inspect) -- subsequent rework takes the fresh-spawn path
    - Outputs a recovery summary
 
 2. **Run nd health check**:
