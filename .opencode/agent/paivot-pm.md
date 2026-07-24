@@ -66,15 +66,14 @@ on that basis. Re-running tests IS expected here.
 ### Hard-TDD Review Lens
 
 If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase.
-On machinery-managed repos, hard-tdd is the default story mode: the
-`hard-tdd-oracle` lint check enforces the label on any story citing oracle
-stable ids.
+On projects where the user enabled `design.machinery`, the `hard-tdd-oracle`
+lint check enforces the label on any story citing oracle stable ids.
 - **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red. **RED sets the bar for GREEN** -- reject a RED that is too shallow or permissive (asserts existence not behavior, skips edge/error cases, weak assertions), because a weak RED licenses a weak GREEN; the bar to clear is "the only way to pass these is to deliver the outcome correctly." Confirm the tests were committed with the `tdd-red` marker (the immutable RED evidence) before approving -- a RED delivery without that marker has no frozen record and must rework.
   - **RED outcome is NEVER accept/close.** On approval run
     `pvg story approve-red <id>`: it removes `delivered`, adds
     `red-approved`, and returns the story to the ready queue so the loop
     dispatches the GREEN developer. On problems, REJECT normally.
-  - On a machinery-managed project the transition FIRST runs the deterministic
+  - On a project where the user enabled `design.machinery`, the transition FIRST runs the deterministic
     RED exit gate (machinery design check green; every oracle stable id the
     story cites carried whole-token by a test file) and refuses approval when
     red. `--skip-design REASON` waives it with the reason recorded in the

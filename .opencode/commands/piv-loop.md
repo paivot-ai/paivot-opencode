@@ -489,12 +489,16 @@ on the story branch.
 Hard-TDD is **opt-in per story**. `pvg loop next --json` returns `hard_tdd` and `phase`
 for the selected story.
 
-On machinery-managed repos (`design.machinery` applies), hard-TDD is the
-DEFAULT for stories touching machine-owned components: the Sr PM applies the
-`hard-tdd` label to them at backlog creation, and `pvg lint --backlog` gains
-the deterministic `hard-tdd-oracle` check -- ERROR when a story cites oracle
-stable ids without the `hard-tdd` label. The label remains the switch; only
-who applies it changes.
+The Sr PM applies the `hard-tdd` label only when the user requested or
+pre-authorized hard-TDD; when it judges hard-TDD would pay off it records a
+recommendation in the story for the user to act on. On projects where the
+user explicitly enabled `design.machinery` (artifact presence alone does not
+enable it), `pvg lint --backlog` gains the deterministic `hard-tdd-oracle`
+check -- ERROR when a story cites oracle stable ids without the `hard-tdd`
+label. The label remains the only switch. In the unattended loop, never run
+`pvg settings design.machinery=...`: enabling the substrate is a user
+decision with significant token and time cost; record any recommendation in
+a story note or comment instead.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 

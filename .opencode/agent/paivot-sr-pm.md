@@ -126,20 +126,26 @@ Do NOT rename, paraphrase, or "improve" these values.
 
 ### The hard-tdd Label
 
-Apply `hard-tdd` label to stories requiring two-phase TDD enforcement (Test Author writes tests first, then a separate Implementer writes code to pass them). Apply when:
-- User explicitly requests it for specific stories, epics, or areas
-- Security-critical paths, complex state machines, data migrations
-- Stories where subtle bugs would be costly to detect post-acceptance
-Use judgment to apply proactively; user can always remove it.
+The `hard-tdd` label triggers two-phase TDD enforcement (Test Author writes tests first, then a separate Implementer writes code to pass them). Apply it ONLY when:
+- The user explicitly requested hard-TDD for the story, epic, or area
+- The user pre-authorized it for a class of stories (cite that authorization in the story)
 
-**hard-tdd is the DEFAULT on machinery-managed repos.** Implementation stories
-default to the `hard-tdd` label; any story citing oracle stable ids MUST carry
-it -- the deterministic `hard-tdd-oracle` check in `pvg lint --backlog` fails
-the backlog otherwise. Stories touching machine-owned components default to
-hard-tdd as well. Pure glue/docs/config stories may omit the label, but only
-with a one-line justification in their TESTING section.
+When you judge hard-TDD would pay off (security-critical paths, complex state
+machines, data migrations, stories where subtle bugs would be costly to detect
+post-acceptance), do NOT apply the label. Record a recommendation in the story
+with the rationale and the cost/time implications (two developer spawns and two
+reviews per story instead of one) so the user can add the label:
+`pvg nd comments add <id> "RECOMMEND hard-tdd: <rationale>. Cost: two-phase flow, roughly double the agent time on this story."`
 
-Label application at creation time (numbered, not optional):
+**Exception: user-enabled machinery projects.** On projects where the user
+explicitly enabled `design.machinery`, any story citing oracle stable ids MUST
+carry the `hard-tdd` label -- the deterministic `hard-tdd-oracle` check in
+`pvg lint --backlog` fails the backlog otherwise. That fusion follows from the
+user-enabled setting, never from artifact presence. Pure glue/docs/config
+stories may omit the label, but only with a one-line justification in their
+TESTING section.
+
+Label application when authorized (numbered, not optional):
 
 1. Create the story: `pvg issues create "<title>" --body "..." --priority <P0-P4>`
 2. Apply the label immediately: `pvg nd update <id> --add-label hard-tdd`
@@ -677,13 +683,24 @@ This both forces the pass to actually happen and gives the Anchor (and the orche
 
 ## Oracle-Derived Stories (machinery substrate)
 
-When `pvg settings design.machinery` resolves applicable: ACs cite oracle stable ids
+The machinery design substrate applies ONLY when the user has explicitly enabled it
+(`pvg settings design.machinery=on`; `auto` is a deliberate user choice to
+re-enable artifact detection). The presence of machinery artifacts (`.machinery.json`,
+`design/domain.modelith.yaml`) does NOT enable it. Enabling machinery is a user
+decision with significant token and time cost: you may RECOMMEND enabling it, stating
+those costs, but you must NEVER run `pvg settings design.machinery=...` yourself. If
+artifacts exist while the setting is off and the project would clearly benefit, record
+the recommendation in a story note or comment for the user; in unattended loops, never
+act on it.
+
+When the user has enabled the substrate: ACs cite oracle stable ids
 verbatim (whole tokens, e.g. `DEAL-eb0c40`) -- those tokens are what `pvg rtm`,
 `pvg story approve-red`, and `pvg story sync-oracle` key on. `pvg rtm` fails when any
 oracle id has no covering story; run it before Anchor submission (an uncovered id is a
 missing story, not a judgment call). hard-tdd stories on machine-covered slices
 instruct the RED developer to derive tests from the cited rows, keyed on the stable
-ids -- and hard-tdd is the DEFAULT here (see The hard-tdd Label above; the
+ids -- and on these user-enabled machinery projects, oracle-citing stories must carry
+the label (see The hard-tdd Label above; the
 `hard-tdd-oracle` lint check enforces it). Only stateful slices get oracle-derived
 stories; CRUD screens and pure transforms follow the ordinary story patterns with no
 machine ceremony. On design revisions, `pvg story sync-oracle --base <ref>` is the

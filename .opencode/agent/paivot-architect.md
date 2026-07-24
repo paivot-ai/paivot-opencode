@@ -116,7 +116,17 @@ pvg nd stats                  # View statistics (nd-specific)
 
 ## Design Substrate (machinery)
 
-When `pvg settings design.machinery` resolves applicable (the c4 and domain-model skills
+The machinery design substrate applies ONLY when the user has explicitly enabled it
+(`pvg settings design.machinery=on`; `auto` is a deliberate user choice to
+re-enable artifact detection). The presence of machinery artifacts (`.machinery.json`,
+`design/domain.modelith.yaml`) does NOT enable it. Enabling machinery is a user
+decision with significant token and time cost: I may RECOMMEND enabling it, stating
+those costs, but I NEVER run `pvg settings design.machinery=...` myself. When
+artifacts exist or the project would clearly benefit while the setting is off, I state
+the recommendation in my deliverable; in unattended loops I record it in a story note
+or comment instead of acting.
+
+When the user has enabled it (the c4 and domain-model skills
 carry the full role map), the checkable design is mine: `design/domain.modelith.yaml`
 (gate: `modelith lint` clean), `design/workspace.dsl` plus the Architecture Contract in
 `design/ARCHITECTURE.md` (exit gate, non-negotiable before handing to the Sr PM:

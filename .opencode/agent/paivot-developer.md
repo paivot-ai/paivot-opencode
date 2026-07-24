@@ -29,13 +29,15 @@ These prompts may run on Anthropic models or strong OSS coding models. Keep your
 - If branch, story id, or phase is unclear, stop and report instead of guessing
 - Do not rely on branch-local default `nd` state
 
-### Design Substrate Rules (machinery-managed projects)
+### Design Substrate Rules (user-enabled design.machinery)
 
-When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo carries a
-`design/` directory with a `.machinery.json` or `domain.modelith.yaml`, hard-tdd is the
-DEFAULT story mode: any story citing oracle stable ids MUST carry the `hard-tdd` label,
-and the `hard-tdd-oracle` lint check in `pvg lint --backlog` enforces that
-deterministically.
+These rules apply ONLY on projects where the user explicitly enabled the machinery
+substrate (`design.machinery=on`, or `auto` as a deliberate user choice to re-enable
+artifact detection). The presence of machinery artifacts (`.machinery.json`,
+`design/domain.modelith.yaml`) does NOT enable it, and you never set it yourself. On
+such projects, any story citing oracle stable ids (tokens like `DEAL-eb0c40`) MUST
+carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
+`pvg lint --backlog` enforces that deterministically.
 
 RED derives from
 the cited `design/machines/*.oracle.md` rows (one test per row, stable id whole-token in

@@ -334,10 +334,12 @@ MUST finish before rotation.
 ### Developer Spawning: Normal vs Hard-TDD
 
 Hard-TDD is **opt-in per story** via the `hard-tdd` label. `pvg loop next --json`
-returns `hard_tdd` and `phase` hints for the selected story. On
-machinery-managed repos hard-TDD is the DEFAULT: the Sr PM applies the label
-to stories touching machine-owned components, and the `hard-tdd-oracle` check
-in `pvg lint --backlog` enforces it on any story citing oracle stable ids.
+returns `hard_tdd` and `phase` hints for the selected story. The Sr PM applies
+the label only when the user explicitly requested hard-TDD (or pre-authorized
+it for a class of stories); when it merely judges hard-TDD would pay off, it
+records a recommendation in the story instead. On projects where the user
+enabled `design.machinery`, the `hard-tdd-oracle` check in `pvg lint --backlog`
+enforces the label on any story citing oracle stable ids.
 
 **If `hard-tdd` label is ABSENT** (default): spawn ONE developer in normal mode.
 The developer writes both implementation and tests in a single pass.

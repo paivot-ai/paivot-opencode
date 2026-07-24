@@ -1,6 +1,6 @@
 ---
 name: c4
-description: Architecture-as-code on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2 and its gates (G2, G4, G5 and the ratchet).
+description: Architecture-as-code on the machinery design substrate. Use when the user has explicitly enabled the project's design.machinery setting (default off; artifact presence alone does not enable it), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2 and its gates (G2, G4, G5 and the ratchet).
 version: 2.1.0
 ---
 
@@ -20,9 +20,14 @@ record). Never restate the formats here or in stories.
 
 ## When this applies
 
-`pvg settings design.machinery`: `auto` (default) applies exactly when the repo is
-machinery-managed (a `.machinery.json` at the root, or `design/domain.modelith.yaml`);
-`on` promises it (a missing design fails loudly); `off` disables it. Legacy
+`pvg settings design.machinery`: `off` (default) disables it; `on` promises it (a
+missing design fails loudly); `auto` is a deliberate user choice to re-enable artifact
+detection (a `.machinery.json` at the root, or `design/domain.modelith.yaml`). The
+substrate applies ONLY when the user has explicitly enabled it; the presence of
+machinery artifacts does NOT enable it. Enabling machinery is a user decision with
+significant token and time cost: agents may RECOMMEND enabling it, stating those
+costs, but must never run `pvg settings design.machinery=...` themselves (in
+unattended loops, record the recommendation in a story note or comment). Legacy
 `architecture.c4=true` projects keep the old narrative-twin flow until the model moves
 under `design/`. The `machinery` binary converges via `pvg update`; `pvg doctor` reports
 `machinery-reachable`.
@@ -65,11 +70,14 @@ same cadence.
 
 ## Machinery implies hard-TDD
 
-Once `impl` is configured, Gt-tests holds the suite to every committed oracle stable id;
+On a project where the user enabled `design.machinery`, once `impl` is configured,
+Gt-tests holds the suite to every committed oracle stable id;
 the design ships its own test spec. The Paivot rule follows: any story citing oracle
 stable ids must carry the `hard-tdd` label (`pvg lint --backlog` enforces this
-deterministically as the `hard-tdd-oracle` check), and hard-tdd is the Sr PM default for
-machine-covered slices. Label-less stories are for the parts the machines do not cover.
+deterministically as the `hard-tdd-oracle` check); the fusion is conditioned on the
+user-enabled setting, never on artifact presence. Label-less stories are for the parts
+the machines do not cover; there the label stays user-opt-in, with the Sr PM
+recommending it where it would pay off.
 
 ## Diagrams
 

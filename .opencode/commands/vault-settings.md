@@ -36,6 +36,7 @@ dnf.specialist_review: true
 dnf.max_iterations: 3
 dnf.domain_model: false
 architecture.c4: false
+design.machinery: off
 loop.persist_across_sessions: true
 loop.agent_resume: true
 lint.quality_gates:
@@ -63,10 +64,17 @@ Notes on selected settings:
   tool's `task_id` instead of spawning a fresh agent. Fresh spawn remains the
   fallback on any failure (including a RESUME_MISS reply). Set `false` to
   force always-fresh spawns; recorded handles are simply ignored.
-- Machinery-managed repos (`design.machinery` applies): `pvg lint --backlog`
-  also runs the deterministic `hard-tdd-oracle` check -- ERROR when a story
-  cites oracle stable ids without the `hard-tdd` label. This is automatic on
-  machinery-managed repos, not a setting.
+- `design.machinery` (default `off`, values `off|on|auto`): the machinery
+  design substrate. This is a user-only decision: `on` enables it, `auto` is
+  a deliberate user choice to re-enable artifact detection. The presence of
+  machinery artifacts (`.machinery.json`, `design/domain.modelith.yaml`) does
+  NOT enable it. Enabling machinery carries significant token and time cost:
+  agents may recommend it, stating those costs, but must never set it
+  themselves.
+- When the user has enabled `design.machinery`: `pvg lint --backlog` also
+  runs the deterministic `hard-tdd-oracle` check -- ERROR when a story cites
+  oracle stable ids without the `hard-tdd` label. This follows automatically
+  from the user-enabled setting; it is not a separate setting.
 - `lint.quality_gates`: extra quality-gate patterns (pipe-separated) that the
   `walking-skeleton` check of `pvg lint --backlog` requires in every skeleton's
   AC, on top of its generic defaults. Populated by the Sr PM from the project

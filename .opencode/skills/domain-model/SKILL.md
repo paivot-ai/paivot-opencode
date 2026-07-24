@@ -1,6 +1,6 @@
 ---
 name: domain-model
-description: Canonical domain model and its derivation chain on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy dnf.domain_model setting is enabled, or when the user asks about the domain model, entities, invariants, ubiquitous language, state machines, oracles, stable ids, the relational layers (policy, integrity, isolation), rebuild or hybrid migration, the surface ledger, or how stories derive from the design.
+description: Canonical domain model and its derivation chain on the machinery design substrate. Use when the user has explicitly enabled the project's design.machinery setting (default off; artifact presence alone does not enable it), when the legacy dnf.domain_model setting is enabled, or when the user asks about the domain model, entities, invariants, ubiquitous language, state machines, oracles, stable ids, the relational layers (policy, integrity, isolation), rebuild or hybrid migration, the surface ledger, or how stories derive from the design.
 version: 2.1.0
 ---
 
@@ -17,7 +17,12 @@ and tests key on.
 
 ## When this applies
 
-`pvg settings design.machinery` resolves it (auto | on | off), same as the c4 skill.
+`pvg settings design.machinery` gates it (off | on | auto), same as the c4 skill: the
+substrate applies ONLY when the user has explicitly enabled it (`on`, or `auto` as a
+deliberate choice to re-enable artifact detection). Default is `off`; the presence of
+machinery artifacts (`.machinery.json`, `design/domain.modelith.yaml`) does NOT enable
+it. Enabling machinery is a user decision with significant token and time cost: agents
+may RECOMMEND enabling it, stating those costs, but must never set it themselves.
 Legacy `dnf.domain_model=true` keeps the v1 flow until the model moves under `design/`.
 Both `modelith` and `machinery` converge via `pvg update`.
 
@@ -35,12 +40,14 @@ Both `modelith` and `machinery` converge via `pvg update`.
 
 ## Machinery implies hard-TDD
 
-On a machinery-managed repo, hard-tdd stops being an opt-in nicety: the design ships a
+On a project where the user enabled `design.machinery`, hard-tdd stops being an opt-in
+nicety: the design ships a
 test oracle and Gt-tests holds the implementation to it. The Paivot rule: any story
 whose ACs cite oracle stable ids MUST carry the `hard-tdd` label; `pvg lint --backlog`
-enforces this deterministically as the `hard-tdd-oracle` check. Hard-tdd is the Sr PM
-DEFAULT for machine-covered slices; the label is omitted only for stories that touch no
-oracle (CRUD screens, pure transforms).
+enforces this deterministically as the `hard-tdd-oracle` check. This fusion follows
+from the user-enabled setting, never from artifact presence. For stories that touch no
+oracle (CRUD screens, pure transforms) the label stays user-opt-in: the Sr PM
+recommends it with rationale and cost where it would pay off, and the user applies it.
 
 ## Codebase archaeology (brownfield)
 

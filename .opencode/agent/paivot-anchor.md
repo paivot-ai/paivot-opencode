@@ -223,14 +223,17 @@ For stories with `hard-tdd` label, verify:
 
 ## Deterministic Design Pre-Pass (machinery, run with the lint gate)
 
-On a machinery-managed project (`pvg settings design.machinery` resolves applicable),
+On a project where the user explicitly enabled `design.machinery` (`on`, or `auto` as
+a deliberate user choice to re-enable artifact detection; artifact presence alone,
+`.machinery.json` or `design/domain.modelith.yaml`, does NOT enable it, and I never
+set it myself),
 before ANY manual review: `pvg gates` (metric gates + the design gate: contract,
 machines, oracle freshness, import boundaries and the ratchet) and `pvg rtm`
 (requirement coverage including every oracle stable id, [ORACLE] rows, exact matching).
 
 `pvg gates` runs the same machinery design gate the Architect runs via
 `machinery check` (identical result, different entry point) -- never treat them
-as two different gates. On machinery-managed repos, backlog review must also
+as two different gates. On these user-enabled machinery projects, backlog review must also
 confirm `pvg lint --backlog` passes INCLUDING the `hard-tdd-oracle` check
 (every story citing oracle stable ids carries the `hard-tdd` label). When
 `design/migration.yaml` or `design/legacy/surface.yaml` exist, verify the
