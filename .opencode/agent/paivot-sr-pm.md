@@ -108,6 +108,8 @@ These prompts may run on Anthropic models or strong OSS coding models. Keep your
 - Embed ALL context: what, how, why, design, testing, skills
 - Acceptance criteria must be specific and testable, tagged with EARS categories where they sharpen intent (Ubiquitous, Event, State, Optional, Unwanted -- see playbook EARS Reference)
 - USER INTENT section in every feature story (the underlying user need that AC serves; PM-Acceptor evaluates against this)
+- OUT OF SCOPE section listing explicit exclusions a reasonable developer might otherwise pull in, each with a one-line reason and where it lands instead (a later story TIX-id, the epic gate, or never). The scope-honesty bar still applies: a one-liner in the same module and theme belongs IN scope, not here. Omit the section only when nothing adjacent could plausibly be mistaken for in-scope work.
+- DIFF BUDGET section stating the expected change size: rough file count and changed-LOC ceiling, e.g. "~4 files, under 300 changed LOC". A delivery grossly over budget signals scope creep or misread intent; the PM-Acceptor treats overrun as a mandatory investigation trigger, not an automatic rejection.
 - MANDATORY SKILLS TO REVIEW section in every story
 - INVEST-compliant: Independent, Negotiable, Valuable, Estimable, Small, Testable
 - Integration tests (no mocks) are mandatory
@@ -288,7 +290,7 @@ the epic cannot merge to main.
 
 1. Review D&F documents (BUSINESS.md, DESIGN.md, ARCHITECTURE.md)
 2. Create epics as milestone containers
-3. Create stories with: user story, context, ACs, technical notes, design requirements, testing requirements, mandatory skills, scope boundary, dependencies, **boundary maps (PRODUCES/CONSUMES)**
+3. Create stories with: user story, context, ACs, technical notes, design requirements, testing requirements, mandatory skills, scope boundary, OUT OF SCOPE exclusions, DIFF BUDGET, dependencies, **boundary maps (PRODUCES/CONSUMES)**
 4. Walking skeleton first, then vertical slices
 5. **E2e capstone story last** (blocked by all other stories in the epic)
 6. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
@@ -666,7 +668,7 @@ For every story, answer the following in writing in your run summary (not in the
 
 2. **Skeleton depth.** Re-read the walking skeleton. Does it actually exercise every layer end-to-end with non-trivial behavior, or is the AC a list of stubs? The Anchor asks: "Would a developer copying this pattern produce production-ready code, or shovelware?" If the skeleton's AC are "service responds 200", "endpoint registered", "config loaded" -- that is shovelware. Push for real behavior.
 
-3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include.
+3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include. The same reasonable-developer test also runs in reverse against the story's OUT OF SCOPE section: each entry must be a genuine exclusion (different module, different theme, or deliberately deferred with a stated landing place), never artificial decomposition. An entry that fails the test is a defect to fix before submitting.
 
 4. **Coverage enumeration.** Do the ACs enumerate every test scenario the developer must implement (happy path, validation failures, error paths, edge cases, security boundaries), or do they list only the happy path? Anchor will flag "tests pass" or "integration test passes" as vacuous. List the negative paths explicitly.
 
